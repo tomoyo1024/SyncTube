@@ -209,7 +209,6 @@ class HttpServer {
 				info: cache.notEnoughSpaceErrorText,
 				errorId: "freeSpace",
 			});
-			cache.remove(name);
 			req.destroy();
 			final client = main.clients.getByName(name) ?? return;
 			main.serverMessage(client, cache.notEnoughSpaceErrorText);
@@ -372,10 +371,16 @@ class HttpServer {
 	}
 
 	function parseRangeHeader(rangeHeader:String, videoSize:Int):{start:Int, end:Int} {
-		final ranges = ~/[-=]/g.split(rangeHeader);
+		final ranges = ~/[=-]/g.split(rangeHeader);
 		var start = Std.parseInt(ranges[1]);
-		if (Utils.isOutOfRange(start, 0, videoSize - 1)) start = 0;
 		var end = Std.parseInt(ranges[2]);
+		// handle file end requests like `bytes=-500`: ["bytes","","500"]
+		if (start == null) {
+			final suffix = end ?? 0;
+			start = (videoSize - suffix).limitMin(0);
+			end = videoSize - 1;
+		}
+		if (Utils.isOutOfRange(start, 0, videoSize - 1)) start = 0;
 		if (end == null) end = start + CHUNK_SIZE;
 		if (Utils.isOutOfRange(end, start, videoSize - 1)) end = (videoSize - 1).limitMin(0);
 		return {

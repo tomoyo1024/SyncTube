@@ -70,7 +70,7 @@ class Utils {
 			r.setEncoding("utf8");
 			final data = new StringBuf();
 			r.on("data", chunk -> data.add(chunk));
-			r.on("end", () -> callback(data.toString()));
+			r.on("end", () -> callback(data.toString().trim()));
 		}).on("error", onError).on("timeout", onError);
 	}
 

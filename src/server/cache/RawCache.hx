@@ -247,6 +247,7 @@ class RawCache {
 					// Head request can return full stream size, so lets do loose assumption
 					final req = request(segments[0].url, {method: Get}, (res:IncomingMessage) -> {
 						final contentLength = Std.parseInt(res.headers["content-length"]) ?? 0;
+						res.destroy();
 						final totalSize = contentLength * (segments.length + 1);
 						if (totalSize == 0) {
 							onError("Failed to get segment sizes: no content-length");
@@ -439,7 +440,8 @@ class RawCache {
 
 	function cleanupFiles(files:Array<String>):Void {
 		for (file in files) {
-			if (FileSystem.exists(file)) FileSystem.deleteFile(file);
+			final path = '${cache.cacheDir}/$file';
+			if (FileSystem.exists(path)) FileSystem.deleteFile(path);
 		}
 	}
 

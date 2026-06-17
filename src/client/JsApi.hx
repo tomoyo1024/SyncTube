@@ -58,8 +58,9 @@ class JsApi {
 
 	@:expose
 	static function hasScriptInHead(url:String):Bool {
+		final abs = new js.html.URL(url, document.baseURI).href;
 		for (child in document.getElementsByTagName("head")[0].children) {
-			if ((child : Dynamic).src == url) return true;
+			if ((child : Dynamic).src == abs) return true;
 		}
 		return false;
 	}
@@ -164,14 +165,16 @@ class JsApi {
 	}
 
 	public static function fireEvents(event:WsEvent):Void {
-		for (listener in onListeners.reversed()) {
+		final listeners = onListeners.copy();
+		for (listener in listeners.reversed()) {
 			if (listener.type != event.type) continue;
 			listener.callback(event);
 		}
-		for (listener in onceListeners.reversed()) {
+		final onces = onceListeners.copy();
+		for (listener in onces.reversed()) {
 			if (listener.type != event.type) continue;
-			listener.callback(event);
 			onceListeners.remove(listener);
+			listener.callback(event);
 		}
 	}
 

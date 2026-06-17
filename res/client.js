@@ -1257,9 +1257,10 @@ client_JsApi.addScriptToHead = $hx_exports["client"]["JsApi"]["addScriptToHead"]
 	window.document.head.appendChild(script);
 };
 client_JsApi.hasScriptInHead = $hx_exports["client"]["JsApi"]["hasScriptInHead"] = function(url) {
+	var abs = new URL(url,window.document.baseURI).href;
 	var _g = 0;
 	var _g1 = window.document.getElementsByTagName("head")[0].children;
-	while(_g < _g1.length) if(_g1[_g++].src == url) {
+	while(_g < _g1.length) if(_g1[_g++].src == abs) {
 		return true;
 	}
 	return false;
@@ -1318,24 +1319,24 @@ client_JsApi.once = $hx_exports["client"]["JsApi"]["once"] = function(type,callb
 	client_JsApi.onceListeners.unshift({ type : type, callback : callback});
 };
 client_JsApi.fireEvents = function(event) {
-	var _g_arr = client_JsApi.onListeners;
-	var _g_i = _g_arr.length - 1;
+	var listeners = client_JsApi.onListeners.slice();
+	var _g_i = listeners.length - 1;
 	while(_g_i > -1) {
-		var listener = _g_arr[_g_i--];
+		var listener = listeners[_g_i--];
 		if(listener.type != event.type) {
 			continue;
 		}
 		listener.callback(event);
 	}
-	var _g_arr = client_JsApi.onceListeners;
-	var _g_i = _g_arr.length - 1;
+	var onces = client_JsApi.onceListeners.slice();
+	var _g_i = onces.length - 1;
 	while(_g_i > -1) {
-		var listener = _g_arr[_g_i--];
+		var listener = onces[_g_i--];
 		if(listener.type != event.type) {
 			continue;
 		}
-		listener.callback(event);
 		HxOverrides.remove(client_JsApi.onceListeners,listener);
+		listener.callback(event);
 	}
 };
 client_JsApi.notifyOnVideoChange = $hx_exports["client"]["JsApi"]["notifyOnVideoChange"] = function(callback) {
@@ -2357,7 +2358,7 @@ client_Main.prototype = {
 			if((client.group & 8) != 0) {
 				klass += " userlist_owner";
 			}
-			list_b += Std.string("<span class=\"" + klass + "\">" + client.name + "</span></div>");
+			list_b += Std.string("<span class=\"" + klass + "\">" + StringTools.htmlEscape(client.name) + "</span></div>");
 		}
 		window.document.querySelector("#userlist").innerHTML = list_b;
 	}
@@ -2957,9 +2958,8 @@ client_Player.prototype = {
 		}
 		var item = this.videoList.items[i];
 		this.setSupportedPlayer(item.url,item.playerType);
-		this.removeActiveLabel(this.videoList.pos);
 		this.videoList.setPos(i);
-		this.addActiveLabel(this.videoList.pos);
+		this.addActiveItemLabel();
 		this.canBePlayedSent = false;
 		if(this.main.isVideoEnabled) {
 			this.player.loadVideo(item);
@@ -2990,7 +2990,7 @@ client_Player.prototype = {
 			return _gthis.isAudioTrackLoaded = true;
 		};
 		this.audioTrack.onerror = function(e) {
-			haxe_Log.trace(e,{ fileName : "src/client/Player.hx", lineNumber : 220, className : "client.Player", methodName : "setExternalAudioTrack"});
+			haxe_Log.trace(e,{ fileName : "src/client/Player.hx", lineNumber : 219, className : "client.Player", methodName : "setExternalAudioTrack"});
 			_gthis.audioTrack.oncanplay = null;
 			_gthis.audioTrack.onerror = null;
 			_gthis.isAudioTrackLoaded = false;
@@ -3237,7 +3237,6 @@ client_Player.prototype = {
 		if(pos == -1) {
 			return;
 		}
-		this.removeActiveLabel(this.videoList.pos);
 		this.videoList.setPos(pos);
 		var _this = this.videoList;
 		if(_this.items[_this.pos].isTemp) {
@@ -3250,16 +3249,19 @@ client_Player.prototype = {
 		}
 		this.setVideo(this.videoList.pos);
 	}
-	,addActiveLabel: function(pos) {
+	,addActiveItemLabel: function() {
 		var childs = this.videoItemsEl.children;
+		var _g = 0;
+		while(_g < childs.length) {
+			var element = childs[_g];
+			++_g;
+			if(element.classList.contains("queue_active")) {
+				element.classList.remove("queue_active");
+				break;
+			}
+		}
 		if(childs[this.videoList.pos] != null) {
 			childs[this.videoList.pos].classList.add("queue_active");
-		}
-	}
-	,removeActiveLabel: function(pos) {
-		var childs = this.videoItemsEl.children;
-		if(childs[this.videoList.pos] != null) {
-			childs[this.videoList.pos].classList.remove("queue_active");
 		}
 	}
 	,updateCounters: function() {
@@ -3292,7 +3294,7 @@ client_Player.prototype = {
 		if(currentUrl != _this.items[_this.pos].url) {
 			this.setVideo(this.videoList.pos);
 		} else {
-			this.addActiveLabel(this.videoList.pos);
+			this.addActiveItemLabel();
 		}
 	}
 	,clearItems: function() {
@@ -3512,7 +3514,7 @@ client_Player.prototype = {
 			}
 		};
 		http.onError = function(msg) {
-			haxe_Log.trace(msg,{ fileName : "src/client/Player.hx", lineNumber : 675, className : "client.Player", methodName : "skipAd"});
+			haxe_Log.trace(msg,{ fileName : "src/client/Player.hx", lineNumber : 673, className : "client.Player", methodName : "skipAd"});
 		};
 		http.request();
 	}

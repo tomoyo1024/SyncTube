@@ -1044,7 +1044,7 @@ class Main {
 			if (client.isLeader) list.add('<ion-icon name="$iconName"></ion-icon>');
 			var klass = client.isBanned ? "userlist_banned" : "";
 			if (client.isAdmin) klass += " userlist_owner";
-			list.add('<span class="$klass">${client.name}</span></div>');
+			list.add('<span class="$klass">${client.name.htmlEscape()}</span></div>');
 		}
 		final userlist = getEl("#userlist");
 		userlist.innerHTML = list.toString();
@@ -1518,7 +1518,7 @@ class Main {
 	}
 
 	@:generic
-	public static inline function getEl<T:Element>(id:String):T {
+	public static inline function getEl<T:Element>(id:String):Null<T> {
 		return cast document.querySelector(id);
 	}
 }

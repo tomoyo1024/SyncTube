@@ -300,6 +300,7 @@ class Main {
 		if (isNoState) return config;
 		final customPath = '$userDir/config.json';
 		if (!FileSystem.exists(customPath)) return config;
+		final defaultYtDlp = config.ytDlp;
 		final customConfig:ServerConfig = Json.parse(File.getContent(customPath));
 		for (field in Reflect.fields(customConfig)) {
 			if (Reflect.field(config, field) == null) {
@@ -307,6 +308,8 @@ class Main {
 			}
 			Reflect.setField(config, field, Reflect.field(customConfig, field));
 		}
+		config.ytDlp.channel ??= defaultYtDlp.channel;
+		config.ytDlp.jsRuntime ??= defaultYtDlp.jsRuntime;
 		final emoteCopies:Map<String, Bool> = [];
 		for (emote in config.emotes) {
 			if (emoteCopies[emote.name]) trace('Warning: emote name "${emote.name}" has copy');
@@ -910,10 +913,13 @@ class Main {
 				});
 
 			case SetLeader:
+				if (!checkPermission(client, RequestLeaderPerm)) return;
 				final clientName = data.setLeader.clientName;
-				if (client.name == clientName) {
-					if (!checkPermission(client, RequestLeaderPerm)) return;
-				} else if (!client.isLeader && clientName != "") {
+				final isRemovingLeader = clientName.length == 0;
+				if (isRemovingLeader || client.name == clientName || client.isLeader) {
+					// allow to remove/request/pass leader with a request permission
+				} else {
+					// setting other users as leaders with a set permission
 					if (!checkPermission(client, SetLeaderPerm)) return;
 				}
 				isServerPause = false;

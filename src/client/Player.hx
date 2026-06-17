@@ -185,9 +185,8 @@ class Player {
 		final item = videoList.getItem(i);
 		setSupportedPlayer(item.url, item.playerType);
 
-		removeActiveLabel(videoList.pos);
 		videoList.setPos(i);
-		addActiveLabel(videoList.pos);
+		addActiveItemLabel();
 
 		canBePlayedSent = false;
 		if (main.isVideoEnabled) {
@@ -470,7 +469,6 @@ class Player {
 	public function skipItem(url:String):Void {
 		final pos = videoList.findIndex(item -> item.url == url);
 		if (pos == -1) return;
-		removeActiveLabel(videoList.pos);
 		videoList.setPos(pos);
 		if (videoList.currentItem.isTemp) removeElementItem(url);
 		videoList.skipItem();
@@ -479,17 +477,17 @@ class Player {
 		setVideo(videoList.pos);
 	}
 
-	function addActiveLabel(pos:Int):Void {
+	function addActiveItemLabel():Void {
 		final childs = videoItemsEl.children;
-		if (childs[videoList.pos] != null) {
-			childs[videoList.pos].classList.add("queue_active");
+		final activeLabel = "queue_active";
+		for (element in childs) {
+			if (element.classList.contains(activeLabel)) {
+				element.classList.remove(activeLabel);
+				break;
+			}
 		}
-	}
-
-	function removeActiveLabel(pos:Int):Void {
-		final childs = videoItemsEl.children;
 		if (childs[videoList.pos] != null) {
-			childs[videoList.pos].classList.remove("queue_active");
+			childs[videoList.pos].classList.add(activeLabel);
 		}
 	}
 
@@ -511,7 +509,7 @@ class Player {
 		}
 		if (pos != null) videoList.setPos(pos);
 		if (currentUrl != videoList.currentItem.url) setVideo(videoList.pos);
-		else addActiveLabel(videoList.pos);
+		else addActiveItemLabel();
 	}
 
 	public function clearItems():Void {

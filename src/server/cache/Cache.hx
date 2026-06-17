@@ -105,7 +105,7 @@ class Cache {
 			callback(storageLimit);
 			return;
 		}
-		statfs("/", (err, stats) -> {
+		statfs(cacheDir, (err, stats) -> {
 			if (err != null) {
 				trace(err);
 				callback(storageLimit);
