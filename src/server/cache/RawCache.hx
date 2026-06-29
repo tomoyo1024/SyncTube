@@ -27,7 +27,7 @@ class RawCache {
 		this.cache = cache;
 	}
 
-	public function cacheRawVideo(client:Client, url:String, callback:(name:String) -> Void) {
+	public function cacheRawVideo(client:Client, url:String, cb:CacheCallbacks) {
 		final isM3U8 = url.contains(".m3u8");
 		final ext = isM3U8 ? "m3u8" : "mp4";
 
@@ -39,71 +39,72 @@ class RawCache {
 		outName = cache.getFreeFileName(outName);
 
 		if (cache.exists(outName)) {
-			callback(outName);
+			cb.onResolved(cache.getFileUrl(outName));
+			cb.onComplete();
 			return;
 		}
 
 		trace('Caching $url to $outName...');
-		main.send(client, {
-			type: Progress,
-			progress: {
-				type: Caching,
-				ratio: 0,
-				data: outName
-			}
-		});
+		cb.onResolved(cache.getFileUrl(outName));
 
 		if (isM3U8) {
-			handleM3u8(client, url, outName, callback);
+			handleM3u8(client, url, outName, cb);
 		} else {
-			handleMp4(client, url, outName, callback);
+			handleMp4(client, url, outName, cb);
 		}
 	}
 
-	function handleMp4(client:Client, url:String, outName:String, callback:(name:String) -> Void) {
+	function handleMp4(client:Client, url:String, outName:String, cb:CacheCallbacks) {
 		final clientName = client.name;
+		var lastSentRatio = 0.0;
+		var canceled = false;
 		downloadFile(client, url, outName, (downloaded, total) -> {
-			main.sendByName(clientName, {
-				type: Progress,
-				progress: {
-					type: Downloading,
-					ratio: (downloaded / total).clamp(0, 1).toFixed(4)
-				}
-			});
+			if (canceled) return;
+			final ratio = (downloaded / total).clamp(0, 1);
+			if (ratio - lastSentRatio < 0.01 && ratio < 1) return;
+			lastSentRatio = ratio;
+			cb.onProgress(ratio.toFixed(4));
 		}, () -> {
-			cache.add(outName);
-			callback(outName);
+			if (canceled) return;
+			probeDuration(outName, duration -> {
+				if (canceled) return;
+				if (duration > 0 && cb.onMetadata != null) cb.onMetadata(null, duration);
+				cache.add(outName);
+				cb.onComplete();
+			});
 		}, (err) -> {
+			if (canceled) return;
 			log(clientName, 'Mp4 download failed: $err');
-			cancelProgress(clientName);
+			cb.onError();
+		}, (cancel) -> {
+			if (cb.registerCancel == null) return;
+			cb.registerCancel(() -> {
+				canceled = true;
+				cancel();
+			});
 		});
 	}
 
-	function handleM3u8(client:Client, url:String, outName:String, callback:(name:String) -> Void):Void {
+	function handleM3u8(client:Client, url:String, outName:String, cb:CacheCallbacks):Void {
 		final clientName = client.name;
 		final useProxy = true;
+		var canceled = false;
+		if (cb.registerCancel != null) cb.registerCancel(() -> canceled = true);
 		downloadM3u8Playlist(client, url, useProxy, (playlist, totalSize, segments) -> {
+			if (canceled) return;
 			// only playlist file donwloaded
 			if (useProxy) totalSize = playlist.length;
 
 			if (!cache.removeOlderCache(totalSize + cache.freeSpaceBlock)) {
 				log(clientName, cache.notEnoughSpaceErrorText);
-				cancelProgress(clientName);
+				cb.onError();
 				return;
 			}
 
 			if (useProxy) {
-				main.sendByName(clientName, {
-					type: Progress,
-					progress: {
-						type: Caching,
-						ratio: 1,
-						data: outName
-					}
-				});
 				File.saveContent('${cache.cacheDir}/$outName', playlist);
 				cache.add(outName);
-				callback(outName);
+				cb.onComplete();
 				return;
 			}
 
@@ -128,25 +129,19 @@ class RawCache {
 							downloaded++;
 
 							final progress = downloaded / segments.length;
-							main.sendByName(clientName, {
-								type: Progress,
-								progress: {
-									type: Downloading,
-									ratio: progress.clamp(0, 1)
-								}
-							});
+							cb.onProgress(progress.clamp(0, 1));
 
 							if (downloaded == segments.length) {
 								trace('All ${downloaded}/${segments.length} segments downloaded');
 
 								File.saveContent('${cache.cacheDir}/$outName', playlist);
 								cache.add(outName);
-								callback(outName);
+								cb.onComplete();
 								// buildTsFiles(
 								// 	segments.map(item -> item.name),
 								// 	outName,
 								// 	client,
-								// 	callback
+								// 	cb
 								// );
 							} else {
 								downloadNextBatch();
@@ -157,7 +152,7 @@ class RawCache {
 							activeDownloads--;
 							downloaded++;
 							log(clientName, 'TS segment ${segment.i} download failed: $err');
-							cancelProgress(clientName);
+							cb.onError();
 							cleanupFiles(segments.map(item -> item.name));
 						}
 					);
@@ -168,7 +163,7 @@ class RawCache {
 			downloadNextBatch();
 		}, (err) -> {
 			log(clientName, 'M3U8 processing failed: $err');
-			cancelProgress(clientName);
+			cb.onError();
 		});
 	}
 
@@ -273,7 +268,8 @@ class RawCache {
 		client:Client, url:String, fileName:String,
 		onProgress:(downloaded:Int, total:Int) -> Void,
 		onComplete:() -> Void,
-		onError:(err:String) -> Void
+		onError:(err:String) -> Void,
+		?onCancelable:(cancel:() -> Void) -> Void
 	):Void {
 		final outPath = '${cache.cacheDir}/$fileName';
 		final file = Fs.createWriteStream(outPath);
@@ -326,16 +322,22 @@ class RawCache {
 			onError('Request failed: $err');
 		});
 
+		if (onCancelable != null) onCancelable(() -> {
+			req.destroy();
+			file.destroy();
+			if (FileSystem.exists(outPath)) FileSystem.deleteFile(outPath);
+		});
+
 		req.end();
 	}
 
-	function buildTsFiles(tempFiles:Array<String>, outName:String, client:Client, callback:String->Void) {
+	function buildTsFiles(tempFiles:Array<String>, outName:String, client:Client, cb:CacheCallbacks) {
 		final clientName = client.name;
 		final missingFiles = tempFiles.filter(f ->
 			!FileSystem.exists('${cache.cacheDir}/$f'));
 		if (missingFiles.length > 0) {
 			log(clientName, 'Concatenation failed: ${missingFiles.length} segments are missing');
-			cancelProgress(clientName);
+			cb.onError();
 			cleanupFiles(tempFiles);
 			return;
 		}
@@ -377,7 +379,7 @@ class RawCache {
 		final timeoutId = js.Node.setTimeout(() -> {
 			process.kill();
 			log(clientName, 'FFmpeg process timed out after ${timeout / 1000} seconds');
-			cancelProgress(clientName);
+			cb.onError();
 			cleanupFiles(tempFiles.concat([concatFile]));
 		}, timeout);
 
@@ -394,28 +396,16 @@ class RawCache {
 				final admins = main.clients.filter(client -> client.isAdmin);
 				for (admin in admins) main.serverMessage(admin, ffmpegErr);
 
-				main.send(client, {
-					type: Progress,
-					progress: {
-						type: Canceled,
-						ratio: 1
-					}
-				});
+				cb.onError();
 			} else {
 				// Verify the output file exists and has content
 				if (FileSystem.exists('${cache.cacheDir}/$outName')
 					&& FileSystem.stat('${cache.cacheDir}/$outName').size > 0) {
 					cache.add(outName);
-					callback(outName);
+					cb.onComplete();
 				} else {
 					log(clientName, 'FFmpeg process completed but output file is missing or empty');
-					main.send(client, {
-						type: Progress,
-						progress: {
-							type: Canceled,
-							ratio: 1
-						}
-					});
+					cb.onError();
 				}
 			}
 
@@ -427,14 +417,26 @@ class RawCache {
 		process.on("error", (err) -> {
 			js.Node.clearTimeout(timeoutId);
 			log(clientName, 'Failed to start FFmpeg: $err');
-			main.send(client, {
-				type: Progress,
-				progress: {
-					type: Canceled,
-					ratio: 1
-				}
-			});
+			cb.onError();
 			cleanupFiles(tempFiles.concat([concatFile]));
+		});
+	}
+
+	function probeDuration(fileName:String, callback:(duration:Float) -> Void):Void {
+		final path = '${cache.cacheDir}/$fileName';
+		final args = [
+			"-v", "error",
+			"-show_entries", "format=duration",
+			"-of", "default=noprint_wrappers=1:nokey=1",
+			path
+		];
+		ChildProcess.execFile("ffprobe", args, (err, stdout, _) -> {
+			if (err != null) {
+				callback(0);
+				return;
+			}
+			final duration = Std.parseFloat(Std.string(stdout).trim());
+			callback(Math.isNaN(duration) ? 0 : duration);
 		});
 	}
 
@@ -447,15 +449,5 @@ class RawCache {
 
 	function log(clientName:String, msg:String):Void {
 		cache.logByName(clientName, msg);
-	}
-
-	function cancelProgress(clientName:String):Void {
-		main.sendByName(clientName, {
-			type: Progress,
-			progress: {
-				type: Canceled,
-				ratio: 0
-			}
-		});
 	}
 }

@@ -1,54 +1,24 @@
 package server.cache;
 
 import haxe.io.Path;
-import js.lib.Promise;
-import js.node.ChildProcess;
+import js.node.child_process.ChildProcess as ChildProcessObject;
 import sys.FileSystem;
 import utils.YoutubeUtils;
 import ytdlp_nodejs.VideoFormat;
 import ytdlp_nodejs.VideoInfo;
-import ytdlp_nodejs.YtDlp;
 
 class YoutubeCache {
 	final main:Main;
 	final cache:Cache;
-	var ytDlp:Null<YtDlp>;
+	final ytdlp:YtdlpCache;
 
-	public function new(main:Main, cache:Cache):Void {
+	public function new(main:Main, cache:Cache, ytdlp:YtdlpCache):Void {
 		this.main = main;
 		this.cache = cache;
+		this.ytdlp = ytdlp;
 	}
 
-	public function checkYtDeps():Bool {
-		try {
-			ChildProcess.execSync("ffmpeg -version", {stdio: "ignore", timeout: 5000});
-			ytDlp = js.Syntax.code("new (require('ytdlp-nodejs')).YtDlp()");
-			return true;
-		} catch (e) {
-			return false;
-		}
-	}
-
-	public function checkUpdate():Void {
-		ytDlp.execAsync("", {
-			updateTo: main.config.ytDlp.channel,
-			onData: d -> {
-				trace(d);
-			}
-		}).catchError(e -> {
-			trace(e);
-		});
-	}
-
-	public function cleanYtInputFiles(prefix = "__tmp"):Void {
-		final names = FileSystem.readDirectory(cache.cacheDir);
-		for (name in names) {
-			if (!name.startsWith(prefix)) continue;
-			cache.remove(name);
-		}
-	}
-
-	public function cacheYoutubeVideo(client:Client, url:String, callback:(name:String) -> Void) {
+	public function cacheYoutubeVideo(client:Client, url:String, cb:CacheCallbacks) {
 		if (!cache.isYtReady) {
 			trace("Do `npm i https://github.com/RblSb/ytdlp-nodejs` to use cache feature (you also need to install `ffmpeg` to build mp4 from downloaded audio/video tracks).");
 			return;
@@ -59,20 +29,23 @@ class YoutubeCache {
 			log(clientName, 'Error: youtube video id not found in url: $url');
 			return;
 		}
+		// to prevent playlist in url handlings
+		url = 'https://youtu.be/$videoId';
 		final outName = videoId + ".mp4";
 		if (cache.exists(outName)) {
-			callback(outName);
+			cb.onResolved(cache.getFileUrl(outName));
+			cb.onComplete();
 			return;
 		}
 		final inVideoName = '__tmp-video-$videoId';
 		inline function removeInputFiles():Void {
-			cleanYtInputFiles(inVideoName);
+			ytdlp.cleanInputFiles(inVideoName);
 		}
 		inline function checkEnoughSpace(contentLength:Int):Bool {
 			final hasSpace = cache.removeOlderCache(contentLength + cache.freeSpaceBlock);
 			if (!hasSpace) {
 				removeInputFiles();
-				cancelProgress(clientName);
+				cb.onError();
 				log(clientName, cache.notEnoughSpaceErrorText);
 			}
 			return hasSpace;
@@ -83,18 +56,21 @@ class YoutubeCache {
 			return;
 		}
 		trace('Caching $url to $outName...');
-		main.sendByName(clientName, {
-			type: Progress,
-			progress: {
-				type: Caching,
-				ratio: 0,
-				data: outName
-			}
-		});
+		cb.onResolved(cache.getFileUrl(outName));
 
 		var useCookies = false;
+		var lastSentRatio = 0.0;
+		var canceled = false;
+		var process:Null<ChildProcessObject> = null;
+		if (cb.registerCancel != null) cb.registerCancel(() -> {
+			canceled = true;
+			process?.kill();
+			removeInputFiles();
+		});
 
 		function onGetInfo(info:VideoInfo):Void {
+			if (canceled) return;
+			if (cb.onMetadata != null) cb.onMetadata(info.title, info.duration);
 			trace('Get info with ${info.formats.length} formats');
 			var aformats = info.formats.filter(f -> f.acodec != "none"
 				&& f.vcodec == "none" && f.format_note?.contains("original"));
@@ -154,16 +130,16 @@ class YoutubeCache {
 
 			var videoRatioCache = 0.0;
 			var audioRatioCache = 0.0;
-			final dlVideo:Promise<String> = ytDlp.downloadAsync(url, {
+			process = ytdlp.download(url, {
 				format: formatIds,
 				output: '${cache.cacheDir}/$inVideoName',
 				remuxVideo: "mp4",
-				additionalOptions: ["--no-js-runtimes", "--js-runtimes", main.config.ytDlp.jsRuntime],
-				// verbose: true,
-				cookies: useCookies ? getCookiesPathOrNull() : null,
+				additionalOptions: ytdlp.ytExtraOptions(),
+				cookies: useCookies ? ytdlp.getCookiesPathOrNull() : null,
 				forceIpv4: true,
 				socketTimeout: 2,
 				extractorRetries: 0,
+			}, {
 				onProgress: p -> {
 					final isFinished = p.status == "finished";
 					if (isFinished) {
@@ -182,56 +158,46 @@ class YoutubeCache {
 
 					ratio = videoRatioCache * videoSizeRatio + audioRatioCache * audioSizeRatio;
 
-					main.sendByName(clientName, {
-						type: Progress,
-						progress: {
-							type: Downloading,
-							ratio: ratio.toFixed(4)
-						}
-					});
-				}
-			}).catchError(err -> {
-				final err = "Error during video download: " + err;
-				cache.logWithAdmins(client, err);
-				removeInputFiles();
-				cancelProgress(clientName);
-			});
-
-			dlVideo.then((v) -> {
-				final name = cache.findFile(n -> n.startsWith(inVideoName)) ?? {
-					final err = 'Error: cannot find downloaded file with prefix $inVideoName';
+					if (canceled) return;
+					if (ratio - lastSentRatio < 0.01 && ratio < 1) return;
+					lastSentRatio = ratio;
+					cb.onProgress(ratio.toFixed(4));
+				},
+				onComplete: () -> {
+					if (canceled) {
+						removeInputFiles();
+						return;
+					}
+					final name = cache.findFile(n -> n.startsWith(inVideoName)) ?? {
+						final err = 'Error: cannot find downloaded file with prefix $inVideoName';
+						cache.logWithAdmins(client, err);
+						cb.onError();
+						return;
+					};
+					FileSystem.rename('${cache.cacheDir}/$name', '${cache.cacheDir}/$outName');
+					removeInputFiles();
+					cache.add(outName);
+					cb.onComplete();
+				},
+				onError: err -> {
+					if (canceled) return;
+					final err = "Error during video download: " + err;
 					cache.logWithAdmins(client, err);
-					cancelProgress(clientName);
-					return;
-				};
-				FileSystem.rename('${cache.cacheDir}/$name', '${cache.cacheDir}/$outName');
-				removeInputFiles();
-				cache.add(outName);
-				callback(outName);
+					removeInputFiles();
+					cb.onError();
+				}
 			});
 		}
 
-		getInfoAsync(url, useCookies).then(onGetInfo).catchError(err -> {
+		ytdlp.getInfoAsync(url, useCookies).then(onGetInfo).catchError(err -> {
 			trace(err);
 			useCookies = true;
-			getInfoAsync(url, useCookies).then(onGetInfo).catchError(err -> {
+			ytdlp.getInfoAsync(url, useCookies).then(onGetInfo).catchError(err -> {
 				removeInputFiles();
-				cancelProgress(clientName);
+				cb.onError();
 				log(clientName, "" + err);
 			});
 		});
-	}
-
-	function getInfoAsync(url:String, useCookies = false):Promise<VideoInfo> {
-		return cast ytDlp.getInfoAsync(url, cast {
-			cookies: useCookies ? getCookiesPathOrNull() : null,
-			additionalOptions: ["--no-js-runtimes", "--js-runtimes", main.config.ytDlp.jsRuntime],
-		});
-	}
-
-	function getCookiesPathOrNull():Null<String> {
-		final cookiesPath = '${main.userDir}/cookies.txt';
-		return FileSystem.exists(cookiesPath) ? cookiesPath : null;
 	}
 
 	function getBestYoutubeVideoFormat(formats:Array<VideoFormat>, ?ignoreQualities:Array<Int>):Null<VideoFormat> {
@@ -273,15 +239,5 @@ class YoutubeCache {
 
 	function log(clientName:String, msg:String):Void {
 		cache.logByName(clientName, msg);
-	}
-
-	function cancelProgress(clientName:String):Void {
-		main.sendByName(clientName, {
-			type: Progress,
-			progress: {
-				type: Canceled,
-				ratio: 0
-			}
-		});
 	}
 }

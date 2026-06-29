@@ -18,6 +18,7 @@ class Cache {
 	public final freeSpaceBlock = 10 * 1024 * 1024; // 10MB
 
 	final cachedFiles:Array<String> = [];
+	var ytdlpCache:YtdlpCache;
 	var youtubeCache:YoutubeCache;
 	var rawCache:RawCache;
 
@@ -25,12 +26,13 @@ class Cache {
 		this.main = main;
 		this.cacheDir = cacheDir;
 		Utils.ensureDir(cacheDir);
-		youtubeCache = new YoutubeCache(main, this);
+		ytdlpCache = new YtdlpCache(main, this);
+		youtubeCache = new YoutubeCache(main, this, ytdlpCache);
 		rawCache = new RawCache(main, this);
-		isYtReady = youtubeCache.checkYtDeps();
+		isYtReady = ytdlpCache.checkYtDeps();
 		if (isYtReady) {
-			youtubeCache.cleanYtInputFiles();
-			youtubeCache.checkUpdate();
+			ytdlpCache.cleanInputFiles();
+			ytdlpCache.checkUpdate();
 		}
 	}
 
@@ -75,12 +77,31 @@ class Cache {
 		}
 	}
 
-	public function cacheYoutubeVideo(client:Client, url:String, callback:(name:String) -> Void) {
-		youtubeCache.cacheYoutubeVideo(client, url, callback);
+	public function cacheYoutubeVideo(client:Client, url:String, callbacks:CacheCallbacks) {
+		youtubeCache.cacheYoutubeVideo(client, url, callbacks);
 	}
 
-	public function cacheRawVideo(client:Client, url:String, callback:(name:String) -> Void) {
-		rawCache.cacheRawVideo(client, url, callback);
+	/** Site-specific extractor download via yt-dlp, no fallback. **/
+	public function cacheYtdlpVideo(client:Client, url:String, callbacks:CacheCallbacks) {
+		if (!isYtReady) {
+			rawCache.cacheRawVideo(client, url, callbacks);
+			return;
+		}
+		ytdlpCache.cacheVideo(client, url, callbacks);
+	}
+
+	/**
+		use yt-dlp if a site-specific extractor supports the url, otherwise fallback to raw download.
+	**/
+	public function cacheRawVideo(client:Client, url:String, callbacks:CacheCallbacks) {
+		if (!isYtReady) {
+			rawCache.cacheRawVideo(client, url, callbacks);
+			return;
+		}
+		ytdlpCache.checkUrlSupported(url, supported -> {
+			if (supported) ytdlpCache.cacheVideo(client, url, callbacks);
+			else rawCache.cacheRawVideo(client, url, callbacks);
+		});
 	}
 
 	public function setStorageLimit(bytes:Int) {

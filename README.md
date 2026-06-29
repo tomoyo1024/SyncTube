@@ -52,11 +52,11 @@ or
 
 
 ## Optional dependencies
-If you want to enable `Cache on server` feature for Youtube player, you can also run:
+If you want to enable `Cache on server` feature for Youtube and other [supported sites](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md), you can also run:
 ```shell
 npm i https://github.com/RblSb/ytdlp-nodejs
 ```
-And install `ffmpeg` on your server system, it's only used to build single mp4 from downloaded audio/video tracks. Default cache size is 3.0 GiB.
+And install `ffmpeg/ffprobe` on your server system. Default cache size is 3.0 GiB.
 
 ## Configuration
 It just works, but you can also check [user/ folder](/user/README.md) for server settings and additional customization.

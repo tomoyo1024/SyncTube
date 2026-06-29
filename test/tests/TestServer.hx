@@ -1,5 +1,6 @@
 package test.tests;
 
+import Types.ProgressType;
 import Types.WsEvent;
 import Types.WsEventType;
 import haxe.Json;
@@ -50,6 +51,66 @@ class TestServer extends Test {
 
 	function splitLines(text:String):Array<String> {
 		return ~/\r?\n/g.split(text);
+	}
+
+	@:timeout(2000)
+	function testIncompleteUpload(async:Async) {
+		final server = new Main({loadState: false});
+		server.onServerInited = () -> {
+			final client = new FakeClient(server.localIp, server.port);
+			final url = "/cache/upload-test.mp4";
+			client.message().then(data -> {
+				Assert.equals(Connected, data.type);
+				client.name = data.connected.clientName;
+				return client.send({
+					type: AddVideo,
+					addVideo: {
+						item: {
+							url: url,
+							title: "upload",
+							author: "",
+							duration: 30,
+							isTemp: false,
+							playerType: RawType,
+							doCache: false,
+							isIncomplete: true
+						},
+						atEnd: true
+					}
+				});
+			}).then(data -> {
+				Assert.equals(AddVideo, data.type);
+				Assert.isTrue(data.addVideo.item.isIncomplete == true);
+				Assert.equals(1, server.videoList.length);
+				// uploads stream while incomplete, so they stay playable
+				Assert.isTrue(server.videoList.getItem(0).isPlayable());
+				return client.send({
+					type: Progress,
+					progress: {
+						type: Uploading,
+						ratio: 0.5,
+						url: url
+					}
+				});
+			}).then(data -> {
+				Assert.equals(Progress, data.type);
+				Assert.equals(ProgressType.Uploading, data.progress.type);
+				Assert.equals(0.5, data.progress.ratio);
+				return client.send({
+					type: Progress,
+					progress: {
+						type: Completed,
+						ratio: 1,
+						url: url
+					}
+				});
+			}).then(data -> {
+				Assert.equals(Progress, data.type);
+				Assert.equals(ProgressType.Completed, data.progress.type);
+				Assert.isFalse(server.videoList.getItem(0).isIncomplete == true);
+				async.done();
+			});
+		}
 	}
 
 	function request(url:String, onComplete:(data:String) -> Void):Void {

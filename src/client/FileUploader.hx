@@ -1,13 +1,15 @@
 package client;
 
+import Types.ProgressType;
 import Types.UploadResponse;
 import client.Main.getEl;
 import haxe.Json;
-import haxe.Timer;
+import js.Browser.document;
 import js.Browser.window;
 import js.html.File;
 import js.html.InputElement;
 import js.html.ProgressEvent;
+import js.html.URL;
 import js.html.XMLHttpRequest;
 
 class FileUploader {
@@ -18,9 +20,12 @@ class FileUploader {
 	}
 
 	public function uploadFile(file:File):Void {
-		var name = ~/[?#%\/\\]/g.replace(file.name, "").trim();
-		if (name.length == 0) name = "video";
-		name = (window : Dynamic).encodeURIComponent(name);
+		var title = ~/[?#%\/\\]/g.replace(file.name, "").trim();
+		if (title.length == 0) title = "video";
+		final name = (window : Dynamic).encodeURIComponent(title);
+
+		final checkboxTemp:InputElement = getEl("#addfromurl .add-temp");
+		final isTemp = checkboxTemp.checked;
 
 		// send last chunk separately to allow server file streaming while uploading
 		uploadLastChunk(file, name, data -> {
@@ -28,47 +33,94 @@ class FileUploader {
 				main.serverMessage(data.info, true, false);
 				return;
 			}
-			final input:InputElement = getEl("#mediaurl");
-			input.value = data.url;
-
-			uploadFullFile(name, file);
+			final url = data.url;
+			getFileDuration(file, duration -> {
+				if (duration == 0 || Math.isNaN(duration) || !Math.isFinite(duration)) {
+					main.serverMessage(Lang.get("addVideoError"), true, false);
+					return;
+				}
+				uploadFullFile(name, file, url, () -> {
+					main.addUploadedVideo(url, title, duration, true, isTemp);
+				});
+			});
 		});
 	}
 
-	function uploadFullFile(name:String, file:File):Void {
+	function getFileDuration(file:File, callback:(duration:Float) -> Void):Void {
+		final objUrl = URL.createObjectURL(file);
+		final video = document.createVideoElement();
+		video.preload = "metadata";
+		video.muted = true;
+		video.onloadedmetadata = () -> {
+			final duration = video.duration;
+			URL.revokeObjectURL(objUrl);
+			callback(duration);
+		}
+		video.onerror = e -> {
+			URL.revokeObjectURL(objUrl);
+			callback(0);
+		}
+		video.src = objUrl;
+	}
+
+	function uploadFullFile(name:String, file:File, url:String, onStarted:() -> Void):Void {
 		final request = new XMLHttpRequest();
 		request.open("POST", "/upload", true);
 		request.setRequestHeader("content-name", name);
 
-		request.upload.onprogress = (event:ProgressEvent) -> {
-			var ratio = 0.0;
-			if (event.lengthComputable) {
-				ratio = (event.loaded / event.total).clamp(0, 1);
-			}
-			main.onProgressEvent({
+		var added = false;
+		function ensureAdded():Void {
+			if (added) return;
+			added = true;
+			onStarted();
+			main.registerUpload(url, () -> request.abort());
+		}
+
+		function sendProgress(type:ProgressType, ratio:Float):Void {
+			main.send({
 				type: Progress,
 				progress: {
-					type: Uploading,
-					ratio: ratio
+					type: type,
+					ratio: ratio,
+					url: url
 				}
 			});
 		}
 
+		var lastSentRatio = 0.0;
+		request.upload.onprogress = (event:ProgressEvent) -> {
+			ensureAdded();
+			var ratio = 0.0;
+			if (event.lengthComputable) {
+				ratio = (event.loaded / event.total).clamp(0, 1);
+			}
+			if (ratio - lastSentRatio < 0.01 && ratio < 1) return;
+			lastSentRatio = ratio;
+			sendProgress(Uploading, ratio);
+		}
+
 		request.onload = (e:ProgressEvent) -> {
+			main.unregisterUpload(url);
 			final data:UploadResponse = try {
 				Json.parse(request.responseText);
 			} catch (e) {
 				trace(e);
+				sendProgress(Canceled, 0);
 				return;
 			}
-			if (data.errorId == null) return;
-			main.serverMessage(data.info, true, false);
+			if (data.errorId != null) {
+				main.serverMessage(data.info, true, false);
+				sendProgress(Canceled, 0);
+				return;
+			}
+			ensureAdded();
+			sendProgress(Completed, 1);
 		}
-		request.onloadend = () -> {
-			Timer.delay(() -> {
-				main.hideDynamicChin();
-			}, 500);
+		request.onerror = (e:ProgressEvent) -> {
+			main.unregisterUpload(url);
+			sendProgress(Canceled, 0);
 		}
+		request.onabort = (e:ProgressEvent) -> main.unregisterUpload(url);
 
 		request.send(file);
 	}

@@ -127,6 +127,7 @@ enum abstract ProgressType(String) {
 	var Downloading;
 	var Uploading;
 	var Canceled;
+	var Completed;
 }
 
 @:using(Types.VideoItemTools)
@@ -140,10 +141,17 @@ typedef VideoItem = {
 	var ?voiceOverTrack:String;
 	var isTemp:Bool;
 	var doCache:Bool;
+	var ?isIncomplete:Bool;
 	var playerType:PlayerType;
 }
 
 private class VideoItemTools {
+	public static function isPlayable(item:VideoItem):Bool {
+		// if item is uploading instead of caching, it's playable
+		if (item.isIncomplete == true && item.doCache) return false;
+		return true;
+	}
+
 	public static function withUrl(item:VideoItem, url:String):VideoItem {
 		return {
 			url: url,
@@ -154,6 +162,7 @@ private class VideoItemTools {
 			voiceOverTrack: item.voiceOverTrack,
 			isTemp: item.isTemp,
 			doCache: item.doCache,
+			isIncomplete: item.isIncomplete,
 			playerType: item.playerType
 		};
 	}
@@ -208,6 +217,7 @@ typedef WsEvent = {
 	?progress:{
 		type:ProgressType,
 		ratio:Float,
+		?url:String,
 		?data:String
 	},
 	?updateClients:{

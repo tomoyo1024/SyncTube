@@ -183,6 +183,7 @@ class Player {
 	public function setVideo(i:Int):Void {
 		if (!main.isSyncActive) return;
 		final item = videoList.getItem(i);
+		if (!item.isPlayable()) return;
 		setSupportedPlayer(item.url, item.playerType);
 
 		videoList.setPos(i);
@@ -414,9 +415,12 @@ class Player {
 	public function addVideoItem(item:VideoItem, atEnd:Bool):Void {
 		final url = item.url.htmlEscape(true);
 		final duration = item.playerType == IframeType ? "" : duration(item.duration);
+		final isIncomplete = item.isIncomplete == true;
+		final incompleteClass = isIncomplete ? " queue_incomplete" : "";
+		final progressEl = isIncomplete ? '<div class="qe_progress"></div>' : "";
 		final itemEl = Utils.nodeFromString(
-			'<li class="queue_entry info" title="${Lang.get("addedBy")}: ${item.author}">
-				<header>
+			'<li class="queue_entry info$incompleteClass" title="${Lang.get("addedBy")}: ${item.author}">
+				$progressEl<header>
 					<span class="qe_time">$duration</span>
 					<h4><a class="qe_title" href="$url" target="_blank">${item.title.htmlEscape()}</a></h4>
 				</header>
@@ -457,13 +461,39 @@ class Player {
 		}
 	}
 
-	function removeElementItem(url:String):Void {
+	function findItemElement(url:String):Null<Element> {
 		for (child in videoItemsEl.children) {
-			if (child.querySelector(".qe_title").getAttribute("href") == url) {
-				videoItemsEl.removeChild(child);
-				break;
-			}
+			if (child.querySelector(".qe_title").getAttribute("href") == url) return child;
 		}
+		return null;
+	}
+
+	function removeElementItem(url:String):Void {
+		final child = findItemElement(url) ?? return;
+		videoItemsEl.removeChild(child);
+	}
+
+	public function setItemProgress(url:String, ratio:Float):Void {
+		final el = findItemElement(url) ?? return;
+		final bar = el.querySelector(".qe_progress") ?? return;
+		bar.style.width = '${ratio * 100}%';
+	}
+
+	public function completeItem(url:String):Void {
+		final index = videoList.findIndex(item -> item.url == url);
+		if (index == -1) return;
+		final item = videoList.getItem(index);
+		if (item.isIncomplete != true) return;
+		final wasPlayable = item.isPlayable();
+		item.isIncomplete = false;
+		final el = findItemElement(url);
+		if (el != null) {
+			el.classList.remove("queue_incomplete");
+			el.classList.add("queue_cached");
+			final bar = el.querySelector(".qe_progress");
+			if (bar != null) el.removeChild(bar);
+		}
+		if (index == videoList.pos && !wasPlayable) setVideo(index);
 	}
 
 	public function skipItem(url:String):Void {

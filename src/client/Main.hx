@@ -169,6 +169,7 @@ class Main {
 	function requestTime():Void {
 		if (!isSyncActive) return;
 		if (player.isListEmpty()) return;
+		if (!player.getCurrentItem().isPlayable()) return;
 		send({type: GetTime});
 	}
 
@@ -348,11 +349,12 @@ class Main {
 	function addVideoArray(links:Array<String>, atEnd:Bool, isTemp:Bool, doCache:Bool):Void {
 		if (links.length == 0) return;
 		final link = links.shift();
-		addVideo(link, atEnd, isTemp, doCache, () ->
-			addVideoArray(links, atEnd, isTemp, doCache));
+		addVideo(link, atEnd, isTemp, doCache, () -> {
+			addVideoArray(links, atEnd, isTemp, doCache);
+		});
 	}
 
-	public function addVideo(url:String, atEnd:Bool, isTemp:Bool, doCache:Bool, ?callback:() -> Void):Void {
+	public function addVideo(url:String, atEnd:Bool, isTemp:Bool, doCache:Bool, ?afterSend:() -> Void):Void {
 		final protocol = Browser.location.protocol;
 		if (url.startsWith("/")) {
 			final host = Browser.location.hostname;
@@ -364,23 +366,13 @@ class Main {
 			if (!url.startsWith("http")) url = '$protocol//$url';
 		}
 
-		final obj:VideoDataRequest = {
-			url: url,
-			atEnd: atEnd
-		};
-		player.getVideoData(obj, (data:VideoData) -> {
-			if (data.duration == 0) {
-				serverMessage(Lang.get("addVideoError"));
-				return;
-			}
-			data.title ??= Lang.get("rawVideo");
-			data.url ??= url;
+		function sendItem(data:VideoData):Void {
 			send({
 				type: AddVideo,
 				addVideo: {
 					item: {
-						url: data.url,
-						title: data.title,
+						url: data.url ?? url,
+						title: data.title ?? "",
 						author: personal.name,
 						duration: data.duration,
 						isTemp: isTemp,
@@ -392,7 +384,75 @@ class Main {
 					atEnd: atEnd
 				}
 			});
-			if (callback != null) callback();
+			if (afterSend != null) afterSend();
+		}
+
+		final isServerResolvesMeta = doCache && isServerCacheServiceEnabled();
+
+		// skip vk api load if we cache anyway
+		if (isServerResolvesMeta && getLinkPlayerType(url) == VkType) {
+			sendItem({
+				duration: 0,
+				title: "",
+				url: url,
+				playerType: VkType
+			});
+			return;
+		}
+
+		final obj:VideoDataRequest = {
+			url: url,
+			atEnd: atEnd
+		};
+		player.getVideoData(obj, (data:VideoData) -> {
+			if (data.duration == 0) {
+				if (!isServerResolvesMeta) {
+					serverMessage(Lang.get("addVideoError"));
+					return;
+				}
+			} else {
+				data.title ??= Lang.get("rawVideo");
+			}
+			sendItem(data);
+		});
+	}
+
+	function isServerCacheServiceEnabled():Bool {
+		return playersCacheSupport.exists(type -> type != RawType);
+	}
+
+	final activeUploads:Map<String, () -> Void> = [];
+
+	public function registerUpload(url:String, cancel:() -> Void):Void {
+		activeUploads[url] = cancel;
+	}
+
+	public function unregisterUpload(url:String):Void {
+		activeUploads.remove(url);
+	}
+
+	function cancelUpload(url:String):Void {
+		final cancel = activeUploads[url] ?? return;
+		activeUploads.remove(url);
+		cancel();
+	}
+
+	public function addUploadedVideo(url:String, title:String, duration:Float, atEnd:Bool, isTemp:Bool):Void {
+		send({
+			type: AddVideo,
+			addVideo: {
+				item: {
+					url: url,
+					title: title,
+					author: personal.name,
+					duration: duration,
+					isTemp: isTemp,
+					doCache: false,
+					isIncomplete: true,
+					playerType: RawType
+				},
+				atEnd: atEnd
+			}
 		});
 	}
 
@@ -567,6 +627,7 @@ class Main {
 				if (isLeader() && !player.isVideoLoaded()) forceSyncNextTick = true;
 
 			case RemoveVideo:
+				cancelUpload(data.removeVideo.url);
 				player.removeItem(data.removeVideo.url);
 				if (player.isListEmpty()) player.pause();
 
@@ -704,25 +765,14 @@ class Main {
 
 	public function onProgressEvent(data:WsEvent):Void {
 		final data = data.progress;
-		final text = switch data.type {
-			case Caching:
-				final caching = Lang.get("caching");
-				final name = data.data;
-				'$caching $name';
-			case Downloading: Lang.get("downloading");
-			case Uploading: Lang.get("uploading");
+		final url = data.url ?? return;
+		switch data.type {
+			case Caching, Downloading, Uploading:
+				player.setItemProgress(url, data.ratio);
+			case Completed:
+				player.completeItem(url);
 			case Canceled:
-				hideDynamicChin();
-				return;
-		}
-		final percent = (data.ratio * 100).toFixed(1);
-		var text = '$text...';
-		if (percent > 0) text += ' $percent%';
-		showProgressInfo(text);
-		if (data.ratio == 1) {
-			Timer.delay(() -> {
-				hideDynamicChin();
-			}, 500);
+				player.removeItem(url);
 		}
 	}
 
@@ -1147,18 +1197,6 @@ class Main {
 		btn.addEventListener("transitionend", e -> {
 			btn.style.display = "none";
 		}, {once: true});
-	}
-
-	public function showProgressInfo(text:String):Void {
-		final chin = getEl("#dynamic-chin");
-		var div = chin.querySelector("#progress-info");
-		if (div == null) {
-			div = document.createDivElement();
-			div.id = "progress-info";
-			chin.prepend(div);
-		}
-		div.textContent = text;
-		showDynamicChin();
 	}
 
 	public function showServerUnpause():Void {

@@ -25,6 +25,7 @@ import js.npm.ws.WebSocket;
 import json2object.ErrorUtils;
 import json2object.JsonParser;
 import server.cache.Cache;
+import server.cache.CacheCallbacks;
 import sys.FileSystem;
 import sys.io.File;
 import utils.macro.Macro;
@@ -133,7 +134,10 @@ class Main {
 		consoleInput = new ConsoleInput(this);
 		consoleInput.initConsoleInput();
 		cache = new Cache(this, cacheDir);
-		if (cache.isYtReady) playersCacheSupport.push(YoutubeType);
+		if (cache.isYtReady) {
+			playersCacheSupport.push(YoutubeType);
+			playersCacheSupport.push(VkType);
+		}
 		initIntergationHandlers();
 		loadState();
 		cache.setStorageLimit(cast config.cacheStorageLimitGiB * 1024 * 1024 * 1024);
@@ -729,6 +733,20 @@ class Main {
 
 			case ServerMessage:
 			case Progress:
+				final p = data.progress;
+				final url = p.url ?? return;
+				final index = videoList.findIndex(i -> i.url == url);
+				if (index == -1) return;
+				final item = videoList.getItem(index);
+				if (item.isIncomplete != true) return;
+				if (item.doCache) return;
+				if (item.author != client.name) return;
+				switch p.type {
+					case Completed: completeIncompleteItem(url);
+					case Canceled: removeIncompleteItem(url);
+					case _: broadcast(data);
+				}
+
 			case AddVideo:
 				if (isPlaylistLockedFor(client)) return;
 				if (!checkPermission(client, AddVideoPerm)) return;
@@ -761,28 +779,40 @@ class Main {
 					videoList.addItem(item, data.addVideo.atEnd);
 					broadcast(data);
 					// Initial timer start if VideoLoaded is not happen
-					if (videoList.length == 1) restartWaitTimer();
+					if (videoList.length == 1 && item.isPlayable()) restartWaitTimer();
 				}
 				if (!item.doCache) {
 					addVideo();
-				} else {
-					switch item.playerType {
-						case RawType:
-							cache.cacheRawVideo(client, item.url, (name) -> {
-								item = item.withUrl(cache.getFileUrl(name));
-								addVideo();
-							});
-						case YoutubeType:
-							cache.cacheYoutubeVideo(client, item.url, (name) -> {
-								item = item.withUrl(cache.getFileUrl(name));
-								if (item.duration > 1) item.duration -= 1;
-								addVideo();
-							});
-						case type:
-							final name = '$type'.replace("Type", "");
-							serverMessage(client, 'No cache support for $name player.');
-							addVideo();
-					}
+					return;
+				}
+				final isYoutube = item.playerType == YoutubeType;
+				if (!playersCacheSupport.contains(item.playerType)) {
+					final name = '${item.playerType}'.replace("Type", "");
+					serverMessage(client, 'No cache support for $name player.');
+					addVideo();
+					return;
+				}
+				final callbacks:CacheCallbacks = {
+					onResolved: finalUrl -> {
+						item = item.withUrl(finalUrl);
+						item.isIncomplete = true;
+						if (isYoutube && item.duration > 1) item.duration -= 1;
+						addVideo();
+					},
+					onProgress: ratio -> broadcastCacheProgress(item.url, ratio),
+					onComplete: () -> completeIncompleteItem(item.url),
+					onError: () -> removeIncompleteItem(item.url),
+					registerCancel: cancel -> cacheCancelers[item.url] = cancel,
+					onMetadata: (title, duration) ->
+						updateIncompleteItemMeta(item.url, title, duration),
+				};
+				switch (item.playerType) {
+					case YoutubeType:
+						cache.cacheYoutubeVideo(client, item.url, callbacks);
+					case VkType:
+						cache.cacheYtdlpVideo(client, item.url, callbacks);
+					case _:
+						cache.cacheRawVideo(client, item.url, callbacks);
 				}
 
 			case VideoLoaded:
@@ -803,8 +833,12 @@ class Main {
 					saveFlashbackTime(videoList.currentItem);
 				}
 				videoList.removeItem(index);
+				cancelCache(url);
 				broadcast(data);
-				if (isCurrent && videoList.length > 0) restartWaitTimer();
+				if (isCurrent && videoList.length > 0) {
+					if (!videoList.currentItem.isPlayable()) pauseForIncompleteItem();
+					else restartWaitTimer();
+				}
 
 			case SkipVideo:
 				if (!checkPermission(client, RemoveVideoPerm)) return;
@@ -839,6 +873,7 @@ class Main {
 
 			case GetTime:
 				if (videoList.length == 0) return;
+				if (videoList.currentItem.isIncomplete) return;
 				final maxTime = videoList.currentItem.duration - 0.01;
 				if (videoTimer.getTime() > maxTime) {
 					videoTimer.pause();
@@ -1129,8 +1164,89 @@ class Main {
 			saveFlashbackTime(videoList.currentItem);
 		}
 		videoList.skipItem();
-		if (videoList.length > 0) restartWaitTimer();
+		if (videoList.length > 0) {
+			if (!videoList.currentItem.isPlayable()) pauseForIncompleteItem();
+			else restartWaitTimer();
+		}
 		broadcast(data);
+	}
+
+	function pauseForIncompleteItem():Void {
+		videoTimer.stop();
+		waitVideoStart?.stop();
+	}
+
+	final cacheCancelers:Map<String, () -> Void> = [];
+
+	function cancelCache(url:String):Void {
+		final cancel = cacheCancelers[url] ?? return;
+		cacheCancelers.remove(url);
+		cancel();
+	}
+
+	function broadcastCacheProgress(url:String, ratio:Float):Void {
+		broadcast({
+			type: Progress,
+			progress: {
+				type: Downloading,
+				ratio: ratio,
+				url: url
+			}
+		});
+	}
+
+	function updateIncompleteItemMeta(url:String, title:Null<String>, duration:Float):Void {
+		final item = videoList.find(item -> item.url == url) ?? return;
+		if (item.isIncomplete != true) return;
+		var changed = false;
+		if (item.duration <= 0 && duration > 0) {
+			item.duration = duration;
+			changed = true;
+		}
+		if (title != null && title.length > 0 && item.title.length == 0) {
+			item.title = title;
+			changed = true;
+		}
+		if (!changed) return;
+		broadcast({
+			type: UpdatePlaylist,
+			updatePlaylist: {
+				videoList: videoList.getItems()
+			}
+		});
+	}
+
+	function completeIncompleteItem(url:String):Void {
+		cacheCancelers.remove(url);
+		final index = videoList.findIndex(i -> i.url == url);
+		if (index == -1) return;
+		final item = videoList.getItem(index);
+		if (item.isIncomplete != true) return;
+		item.isIncomplete = false;
+		broadcast({
+			type: Progress,
+			progress: {
+				type: Completed,
+				ratio: 1,
+				url: url
+			}
+		});
+		// uploaded videos don't need timer restart
+		if (videoList.pos == index && item.doCache) restartWaitTimer();
+	}
+
+	function removeIncompleteItem(url:String):Void {
+		cacheCancelers.remove(url);
+		final index = videoList.findIndex(i -> i.url == url);
+		if (index == -1) return;
+		if (videoList.getItem(index).isIncomplete != true) return;
+		videoList.removeItem(index);
+		broadcast({
+			type: RemoveVideo,
+			removeVideo: {
+				url: url
+			}
+		});
 	}
 
 	function checkPermission(client:Client, perm:Permission):Bool {
