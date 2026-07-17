@@ -21,6 +21,7 @@ private class HttpServerConfig {
 	public final dir:String;
 	public final customDir:String = null;
 	public final allowLocalRequests = false;
+	public final enableCORS = false;
 	public final cache:Cache = null;
 }
 
@@ -62,6 +63,7 @@ class HttpServer {
 	final hasCustomRes = false;
 	final allowedLocalFiles:Map<String, Bool> = [];
 	final allowLocalRequests = false;
+	final enableCORS = false;
 	final cache:Cache = null;
 	final CHUNK_SIZE = 1024 * 1024 * 5; // 5 MB
 	// temp media data while file is uploading to allow instant streaming
@@ -73,6 +75,7 @@ class HttpServer {
 		dir = config.dir;
 		customDir = config.customDir;
 		allowLocalRequests = config.allowLocalRequests;
+		enableCORS = config.enableCORS;
 		cache = config.cache;
 
 		if (customDir != null) hasCustomRes = FileSystem.exists(customDir);
@@ -86,6 +89,18 @@ class HttpServer {
 		}
 		var filePath = getPath(dir, url);
 		final ext = Path.extension(filePath).toLowerCase();
+
+		if (enableCORS) {
+			res.setHeader("access-control-allow-origin", "*");
+			res.setHeader("access-control-allow-headers", "content-type, range, content-name");
+			res.setHeader("access-control-expose-headers", "accept-ranges, content-encoding, content-length, content-range");
+			if (req.method == "OPTIONS") {
+				res.setHeader("access-control-allow-methods", "GET, HEAD, POST, OPTIONS");
+				res.statusCode = 204;
+				res.end();
+				return;
+			}
+		}
 
 		res.setHeader("accept-ranges", "bytes");
 		res.setHeader("content-type", getMimeType(ext));

@@ -205,6 +205,7 @@ class Main {
 			dir: dir,
 			customDir: '$userDir/res',
 			allowLocalRequests: config.localAdmins,
+			enableCORS: config.enableCORS,
 			cache: cache,
 		});
 		Lang.init('$dir/langs');
