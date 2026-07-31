@@ -6,6 +6,7 @@ enum abstract PlayerType(String) {
 	var RawType;
 	var YoutubeType;
 	var VkType;
+	var VimeoType;
 	var IframeType;
 }
 

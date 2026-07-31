@@ -137,6 +137,7 @@ class Main {
 		if (cache.isYtReady) {
 			playersCacheSupport.push(YoutubeType);
 			playersCacheSupport.push(VkType);
+			playersCacheSupport.push(VimeoType);
 		}
 		initIntergationHandlers();
 		loadState();
@@ -810,7 +811,7 @@ class Main {
 				switch (item.playerType) {
 					case YoutubeType:
 						cache.cacheYoutubeVideo(client, item.url, callbacks);
-					case VkType:
+					case VkType, VimeoType:
 						cache.cacheYtdlpVideo(client, item.url, callbacks);
 					case _:
 						cache.cacheRawVideo(client, item.url, callbacks);

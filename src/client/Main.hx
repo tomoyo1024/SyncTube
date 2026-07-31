@@ -389,13 +389,14 @@ class Main {
 
 		final isServerResolvesMeta = doCache && isServerCacheServiceEnabled();
 
-		// skip vk api load if we cache anyway
-		if (isServerResolvesMeta && getLinkPlayerType(url) == VkType) {
+		// skip vk/vimeo api load if we cache anyway
+		final linkPlayerType = getLinkPlayerType(url);
+		if (isServerResolvesMeta && (linkPlayerType == VkType || linkPlayerType == VimeoType)) {
 			sendItem({
 				duration: 0,
 				title: "",
 				url: url,
-				playerType: VkType
+				playerType: linkPlayerType
 			});
 			return;
 		}

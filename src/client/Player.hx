@@ -9,6 +9,7 @@ import client.players.Iframe;
 import client.players.Peertube;
 import client.players.Raw;
 import client.players.Streamable;
+import client.players.Vimeo;
 import client.players.Vk;
 import client.players.Youtube;
 import haxe.Http;
@@ -46,6 +47,7 @@ class Player {
 		youtube = new Youtube(main, this);
 		players = [
 			youtube,
+			new Vimeo(main, this),
 			new Vk(main, this),
 			new Streamable(main, this),
 			new Peertube(main, this),
