@@ -2902,9 +2902,9 @@ var client_Player = function(main) {
 	var _gthis = this;
 	this.main = main;
 	this.youtube = new client_players_Youtube(main,this);
-	this.players = [this.youtube,new client_players_Vimeo(main,this),new client_players_Vk(main,this),new client_players_Streamable(main,this),new client_players_Peertube(main,this)];
 	this.iframePlayer = new client_players_Iframe(main,this);
 	this.rawPlayer = new client_players_Raw(main,this);
+	this.players = [this.youtube,new client_players_Vimeo(main,this),new client_players_Vk(main,this),new client_players_Streamable(main,this),new client_players_Peertube(main,this),this.iframePlayer];
 	this.initItemButtons();
 	var resizeObserver = client_Utils.createResizeObserver(function(entries) {
 		if(_gthis.isVideoLoaded() || _gthis.videoList.items.length == 0) {
@@ -3074,7 +3074,7 @@ client_Player.prototype = {
 			return _gthis.isAudioTrackLoaded = true;
 		};
 		this.audioTrack.onerror = function(e) {
-			haxe_Log.trace(e,{ fileName : "src/client/Player.hx", lineNumber : 222, className : "client.Player", methodName : "setExternalAudioTrack"});
+			haxe_Log.trace(e,{ fileName : "src/client/Player.hx", lineNumber : 223, className : "client.Player", methodName : "setExternalAudioTrack"});
 			_gthis.audioTrack.oncanplay = null;
 			_gthis.audioTrack.onerror = null;
 			_gthis.isAudioTrackLoaded = false;
@@ -3643,7 +3643,7 @@ client_Player.prototype = {
 			}
 		};
 		http.onError = function(msg) {
-			haxe_Log.trace(msg,{ fileName : "src/client/Player.hx", lineNumber : 705, className : "client.Player", methodName : "skipAd"});
+			haxe_Log.trace(msg,{ fileName : "src/client/Player.hx", lineNumber : 706, className : "client.Player", methodName : "skipAd"});
 		};
 		http.request();
 	}
@@ -3952,18 +3952,38 @@ var client_players_Iframe = function(main,player) {
 	this.player = player;
 };
 client_players_Iframe.__name__ = "client.players.Iframe";
+client_players_Iframe.extractTwitchChannel = function(url) {
+	url = StringTools.trim(url);
+	if(!client_players_Iframe.matchTwitchChannel.match(url)) {
+		return "";
+	}
+	return client_players_Iframe.matchTwitchChannel.matched(1);
+};
 client_players_Iframe.prototype = {
 	getPlayerType: function() {
 		return "IframeType";
 	}
 	,isSupportedLink: function(url) {
-		return true;
+		var trimmed = StringTools.trim(url);
+		if(client_players_Iframe.extractTwitchChannel(trimmed).length > 0) {
+			return true;
+		}
+		if(StringTools.startsWith(trimmed,"<iframe") || StringTools.startsWith(trimmed,"<object")) {
+			return true;
+		}
+		return false;
 	}
 	,getVideoData: function(data,callback) {
+		var rawUrl = StringTools.trim(data.url);
+		var channel = client_players_Iframe.extractTwitchChannel(rawUrl);
+		if(channel.length > 0) {
+			callback({ duration : 356400, title : "Twitch: " + channel, url : "<iframe src=\"https://player.twitch.tv/?channel=" + channel + "&parent=www.example.com\" frameborder=\"0\" allowfullscreen=\"true\" scrolling=\"no\" height=\"378\" width=\"620\"></iframe>"});
+			return;
+		}
 		var iframe = window.document.createElement("div");
-		iframe.innerHTML = StringTools.trim(data.url);
+		iframe.innerHTML = rawUrl;
 		if(this.isValidIframe(iframe)) {
-			callback({ duration : 356400, title : "Iframe media"});
+			callback({ duration : 356400, title : "Iframe media", url : rawUrl});
 		} else {
 			callback({ duration : 0});
 		}
@@ -6405,6 +6425,7 @@ client_JsApi.onListeners = [];
 client_JsApi.onceListeners = [];
 client_Settings.isSupported = false;
 client_Utils.isMacSafari = client_Utils._isMacSafari();
+client_players_Iframe.matchTwitchChannel = new EReg("^(?:https?://)?(?:www\\.|m\\.)?twitch\\.tv/([A-Za-z0-9_]+)/?$","i");
 client_players_RawSubs.assTimeStamp = new EReg("([0-9]+):([0-9][0-9]):([0-9][0-9]).([0-9][0-9])","");
 client_players_Vimeo.isApiLoaded = false;
 client_players_Vimeo.isApiLoading = false;

@@ -45,15 +45,16 @@ class Player {
 	public function new(main:Main):Void {
 		this.main = main;
 		youtube = new Youtube(main, this);
+		iframePlayer = new Iframe(main, this);
+		rawPlayer = new Raw(main, this);
 		players = [
 			youtube,
 			new Vimeo(main, this),
 			new Vk(main, this),
 			new Streamable(main, this),
 			new Peertube(main, this),
+			iframePlayer,
 		];
-		iframePlayer = new Iframe(main, this);
-		rawPlayer = new Raw(main, this);
 		initItemButtons();
 
 		final resizeObserver = Utils.createResizeObserver(entries -> {

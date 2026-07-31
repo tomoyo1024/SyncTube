@@ -10,6 +10,8 @@ import js.Browser;
 import js.html.Element;
 
 class Iframe implements IPlayer {
+	static final matchTwitchChannel = ~/^(?:https?:\/\/)?(?:www\.|m\.)?twitch\.tv\/([A-Za-z0-9_]+)\/?$/i;
+
 	final main:Main;
 	final player:Player;
 	final playerEl:Element = getEl("#ytapiplayer");
@@ -24,17 +26,40 @@ class Iframe implements IPlayer {
 		return IframeType;
 	}
 
+	public static function extractTwitchChannel(url:String):String {
+		url = url.trim();
+		if (!matchTwitchChannel.match(url)) return "";
+		final channel = matchTwitchChannel.matched(1);
+		return channel;
+	}
+
 	public function isSupportedLink(url:String):Bool {
-		return true;
+		final trimmed = url.trim();
+		if (extractTwitchChannel(trimmed).length > 0) return true;
+		if (trimmed.startsWith("<iframe") || trimmed.startsWith("<object")) return true;
+		return false;
 	}
 
 	public function getVideoData(data:VideoDataRequest, callback:(data:VideoData) -> Void):Void {
+		final rawUrl = data.url.trim();
+		final channel = extractTwitchChannel(rawUrl);
+		if (channel.length > 0) {
+			final iframeStr = '<iframe src="https://player.twitch.tv/?channel=$channel&parent=www.example.com" frameborder="0" allowfullscreen="true" scrolling="no" height="378" width="620"></iframe>';
+			callback({
+				duration: 99 * 60 * 60,
+				title: 'Twitch: $channel',
+				url: iframeStr
+			});
+			return;
+		}
+
 		final iframe = document.createDivElement();
-		iframe.innerHTML = data.url.trim();
+		iframe.innerHTML = rawUrl;
 		if (isValidIframe(iframe)) {
 			callback({
 				duration: 99 * 60 * 60,
 				title: "Iframe media",
+				url: rawUrl
 			});
 		} else {
 			callback({duration: 0});

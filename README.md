@@ -23,6 +23,7 @@ Default channel example: https://synctube.onrender.com/
 
 ## Supported players
 - Youtube (videos, shorts, streams and playlists)
+- Twitch (streams)
 - Vimeo
 - [Streamable](https://streamable.com)
 - [VK](https://vk.com/video)
