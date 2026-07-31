@@ -71,6 +71,8 @@
 	"clearChat": "Очистить чат",
 	"chatlinePlaceholder": "Введите сообщение...",
 	"leaderDisconnectedServerOnPause": "Лидер вышел, сервер на паузе.",
+	"pausedBy": "(Пауза: $NAME)",
+	"server": "Сервер",
 	"unpause": "Возобновить",
 	"addVideoFromUrl": "Добавить видео по ссылке",
 	"embedCustomFrame": "Добавить iframe",

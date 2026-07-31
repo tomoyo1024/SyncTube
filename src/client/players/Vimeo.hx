@@ -104,7 +104,7 @@ class Vimeo implements IPlayer {
 			callback({duration: 0});
 			return;
 		}
-		final oembedUrl = 'https://vimeo.com/api/oembed.json?url=${StringTools.urlEncode(url)}';
+		final oembedUrl = 'https://vimeo.com/api/oembed.json?url=${url.urlEncode()}';
 		final http = new Http(oembedUrl);
 		http.onData = text -> {
 			try {

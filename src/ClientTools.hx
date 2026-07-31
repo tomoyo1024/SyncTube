@@ -1,8 +1,5 @@
 package;
 
-import Types.Permission;
-import Types.Permissions;
-
 class ClientTools {
 	public static function setLeader(clients:Array<Client>, name:String):Void {
 		for (client in clients) {
@@ -12,10 +9,14 @@ class ClientTools {
 	}
 
 	public static function hasLeader(clients:Array<Client>):Bool {
+		return getLeader(clients) != null;
+	}
+
+	public static function getLeader(clients:Array<Client>):Null<Client> {
 		for (client in clients) {
-			if (client.isLeader) return true;
+			if (client.isLeader) return client;
 		}
-		return false;
+		return null;
 	}
 
 	public static function getByName(

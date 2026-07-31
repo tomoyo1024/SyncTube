@@ -8,6 +8,7 @@
   --scroll-to-end-bg: #fff;
   --midground: #888;
   --foreground: #bbb;
+  --paused-by: #fff;
   --accent: #0055ff;
   --success: #009632;
   --leader-hint: #00963288;
@@ -348,6 +349,10 @@ button.danger-bg:focus {
 #currenttitle {
   text-overflow: ellipsis;
   overflow: hidden;
+}
+
+.paused-by {
+  color: var(--paused-by);
 }
 
 .info header {

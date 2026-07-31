@@ -71,11 +71,18 @@ ClientTools.setLeader = function(clients,name) {
 	}
 };
 ClientTools.hasLeader = function(clients) {
+	return ClientTools.getLeader(clients) != null;
+};
+ClientTools.getLeader = function(clients) {
 	var _g = 0;
-	while(_g < clients.length) if((clients[_g++].group & 4) != 0) {
-		return true;
+	while(_g < clients.length) {
+		var client = clients[_g];
+		++_g;
+		if((client.group & 4) != 0) {
+			return client;
+		}
 	}
-	return false;
+	return null;
 };
 ClientTools.getByName = function(clients,name,def) {
 	var _g = 0;

@@ -200,7 +200,7 @@ class Player {
 			onCanBePlayed();
 		}
 		JsApi.fireVideoChangeEvents(item);
-		getEl("#currenttitle").textContent = item.title;
+		updateTitle();
 	}
 
 	function setExternalAudioTrack(item:VideoItem):Void {
@@ -256,8 +256,24 @@ class Player {
 	public function removeVideo():Void {
 		JsApi.fireVideoRemoveEvents(videoList.currentItem);
 		player.removeVideo();
-		getEl("#currenttitle").textContent = Lang.get("nothingPlaying");
+		updateTitle();
 		setPauseIndicator(false);
+	}
+
+	public function updateTitle():Void {
+		final baseTitle = isListEmpty() ? Lang.get("nothingPlaying") : videoList.currentItem.title;
+		if (!main.lastState.paused) {
+			getEl("#currenttitle").textContent = baseTitle;
+			return;
+		}
+		var pauserName = Lang.get("server");
+		if (!main.lastState.pausedByServer) {
+			final leader = main.getLeader();
+			if (leader != null) pauserName = leader.name;
+		}
+		final prefix = Lang.get("pausedBy").replace("$NAME", pauserName);
+		final span = '<span class="paused-by">${prefix.htmlEscape()}</span>';
+		getEl("#currenttitle").innerHTML = '$span ${baseTitle.htmlEscape()}';
 	}
 
 	public function setPauseIndicator(isPause:Bool):Void {
@@ -270,6 +286,8 @@ class Player {
 		el2.setAttribute("name", state);
 		var isVisible = isPause || main.hasLeader();
 		el2.style.display = isVisible ? "" : "none";
+
+		updateTitle();
 	}
 
 	public function onCanBePlayed():Void {

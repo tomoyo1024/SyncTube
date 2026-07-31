@@ -624,6 +624,7 @@ class Main {
 				updateLastStateTime();
 				player.setTime(0);
 				player.play();
+				player.setPauseIndicator(false);
 				// try to sync leader after with GetTime events
 				if (isLeader() && !player.isVideoLoaded()) forceSyncNextTick = true;
 
@@ -1099,6 +1100,7 @@ class Main {
 		}
 		final userlist = getEl("#userlist");
 		userlist.innerHTML = list.toString();
+		if (player != null) player.updateTitle();
 	}
 
 	function getPageTitle():String {
@@ -1515,6 +1517,10 @@ class Main {
 
 	public function hasLeader():Bool {
 		return clients.hasLeader();
+	}
+
+	public function getLeader():Null<Client> {
+		return clients.getLeader();
 	}
 
 	public function hasLeaderOnPauseRequest():Bool {

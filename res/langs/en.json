@@ -71,6 +71,8 @@
 	"clearChat": "Clear Chat",
 	"chatlinePlaceholder": "Send a message...",
 	"leaderDisconnectedServerOnPause": "Leader was disconnected, server on pause.",
+	"pausedBy": "(Paused by $NAME)",
+	"server": "Server",
 	"unpause": "Unpause",
 	"addVideoFromUrl": "Add video from URL",
 	"embedCustomFrame": "Embed a custom frame",
