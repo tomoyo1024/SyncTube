@@ -8,6 +8,7 @@ import js.html.Element;
 import js.html.ImageElement;
 import js.html.InputElement;
 import js.html.KeyboardEvent;
+import js.html.MouseEvent;
 import js.html.TransitionEvent;
 import js.html.VisualViewport;
 
@@ -137,20 +138,30 @@ class Buttons {
 			getEl("#userlist-wrap").style.transition = "200ms";
 		}, 0);
 
+		final playlistMenuBtn = getEl("#playlist-menu-btn");
+		final playlistMenuDropdown = getEl("#playlist-menu-dropdown");
+
+		inline function closePlaylistMenu() {
+			playlistMenuDropdown.style.display = "none";
+			playlistMenuBtn.classList.remove("active");
+		}
+
 		final toggleSynch = getEl("#togglesynch");
 		toggleSynch.onclick = e -> {
+			closePlaylistMenu();
 			final icon = toggleSynch.firstElementChild;
 			if (main.isSyncActive) {
 				if (!window.confirm(Lang.get("toggleSynchConfirm"))) return;
 				main.isSyncActive = false;
 				icon.style.color = "rgba(238, 72, 67, 0.75)";
-				icon.setAttribute("name", "pause");
+				playlistMenuBtn.classList.add("danger");
 			} else {
 				main.isSyncActive = true;
 				icon.style.color = "";
-				icon.setAttribute("name", "play");
+				playlistMenuBtn.classList.remove("danger");
 				main.send({type: UpdatePlaylist});
 			}
+			updateToggleSynchBtn(main);
 		}
 		final mediaRefresh = getEl("#mediarefresh");
 		mediaRefresh.onclick = e -> {
@@ -176,13 +187,37 @@ class Buttons {
 				icon.setAttribute("name", "link");
 			}, 2000);
 		}
+
+		playlistMenuBtn.onclick = e -> {
+			e.stopPropagation();
+			final isOpen = playlistMenuDropdown.style.display != "none";
+			if (isOpen) {
+				closePlaylistMenu();
+			} else {
+				playlistMenuDropdown.style.display = "";
+				playlistMenuBtn.classList.add("active");
+			}
+		}
+
+		document.addEventListener("click", e -> {
+			final target:Element = cast e.target;
+			if (!playlistMenuBtn.contains(target) && !playlistMenuDropdown.contains(target)) {
+				closePlaylistMenu();
+			}
+		});
+
+		final voteSkip = getEl("#voteskip");
+		voteSkip.addEventListener("click", () -> closePlaylistMenu());
+
 		final clearPlaylist = getEl("#clearplaylist");
 		clearPlaylist.onclick = e -> {
+			closePlaylistMenu();
 			if (!window.confirm(Lang.get("clearPlaylistConfirm"))) return;
 			main.send({type: ClearPlaylist});
 		}
 		final shufflePlaylist = getEl("#shuffleplaylist");
 		shufflePlaylist.onclick = e -> {
+			closePlaylistMenu();
 			if (!window.confirm(Lang.get("shufflePlaylistConfirm"))) return;
 			main.send({type: ShufflePlaylist});
 		}
@@ -200,6 +235,7 @@ class Buttons {
 
 		final showMediaUrl = getEl("#showmediaurl");
 		showMediaUrl.onclick = e -> {
+			closePlaylistMenu();
 			final isOpen = showPlayerGroup(showMediaUrl);
 			if (isOpen) Timer.delay(() -> {
 				getEl("#addfromurl").scrollIntoView();
@@ -209,6 +245,7 @@ class Buttons {
 
 		final showCustomEmbed = getEl("#showcustomembed");
 		showCustomEmbed.onclick = e -> {
+			closePlaylistMenu();
 			final isOpen = showPlayerGroup(showCustomEmbed);
 			if (isOpen) Timer.delay(() -> {
 				getEl("#customembed").scrollIntoView();
@@ -363,6 +400,7 @@ class Buttons {
 				JsApi.setVideoSrc(url);
 			});
 		}
+		updateToggleSynchBtn(main);
 	}
 
 	public static function initHotkeys(main:Main, player:Player):Void {
@@ -381,6 +419,8 @@ class Buttons {
 			switch (key) {
 				case R:
 					getEl("#mediarefresh").onclick();
+				case U:
+					getEl("#togglesynch").onclick();
 				case S:
 					getEl("#voteskip").onclick();
 				case C:
@@ -416,6 +456,17 @@ class Buttons {
 		final text = Lang.get("hotkeys");
 		final state = settings.hotkeysEnabled ? Lang.get("on") : Lang.get("off");
 		getEl("#hotkeysBtn").innerText = '$text: $state';
+	}
+
+	public static function updateToggleSynchBtn(main:Main):Void {
+		final toggleSynch = getEl("#togglesynch");
+		final span = toggleSynch.querySelector("span");
+		final textKey = main.isSyncActive ? "disableVideoSync" : "enableVideoSync";
+		final text = Lang.get(textKey);
+		toggleSynch.title = '$text (Alt-U)';
+		if (span != null) {
+			span.innerHTML = '$text <span class="hotkey-hint">(Alt-U)</span>';
+		}
 	}
 
 	static function initChatInputs(main:Main):Void {

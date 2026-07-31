@@ -394,6 +394,64 @@ header h4 {
   align-items: center;
 }
 
+.playlist-menu-wrap {
+  position: relative;
+  display: inline-flex;
+  margin-left: .5rem;
+}
+
+.playlist-menu-dropdown {
+  position: absolute;
+  top: calc(100% + .5rem);
+  right: 0;
+  background: var(--background-chat);
+  border: .063rem solid var(--border);
+  border-radius: .5rem;
+  box-shadow: var(--box-shadow);
+  z-index: 1000;
+  min-width: 14rem;
+  padding: .35rem 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.playlist-menu-dropdown button.playlist-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: .6rem 1rem;
+  margin-left: 0;
+  background: transparent;
+  border-radius: 0;
+  text-align: left;
+  white-space: nowrap;
+  font-size: .9rem;
+  color: var(--midground);
+}
+
+.playlist-menu-dropdown button.playlist-menu-item:hover,
+.playlist-menu-dropdown button.playlist-menu-item.active {
+  background-color: rgba(255, 255, 255, .08);
+  color: var(--foreground);
+}
+
+.playlist-menu-dropdown button.playlist-menu-item ion-icon {
+  margin-right: .6rem;
+  font-size: 1.1rem;
+}
+
+.playlist-menu-dropdown button.playlist-menu-item .hotkey-hint {
+  color: var(--midground);
+  opacity: .75;
+  font-size: .85em;
+  margin-left: .25rem;
+}
+
+#playlist-menu-btn.danger,
+#playlist-menu-btn.danger ion-icon {
+  color: var(--error);
+}
+
 /*
  * Start main
  */
@@ -773,7 +831,7 @@ footer#footer {
   text-align: left;
 }
 
-#pause-indicator-portrait {
+#pause-indicator-chat {
   padding-left: 0.2rem;
 }
 

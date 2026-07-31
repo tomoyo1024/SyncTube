@@ -268,7 +268,8 @@ typedef WsEvent = {
 		pos:Int
 	},
 	?toggleItemType:{
-		pos:Int
+		pos:Int,
+		?all:Bool
 	},
 	?updatePlaylist:{
 		videoList:Array<VideoItem>

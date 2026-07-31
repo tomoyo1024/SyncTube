@@ -1005,6 +1005,17 @@ class Main {
 				if (!checkPermission(client, ToggleItemTypePerm)) return;
 				final pos = data.toggleItemType.pos;
 				if (!videoList.hasItem(pos)) return;
+				if (data.toggleItemType.all == true) {
+					final targetIsTemp = !videoList.getItem(pos).isTemp;
+					videoList.setAllItemTypes(targetIsTemp);
+					broadcast({
+						type: UpdatePlaylist,
+						updatePlaylist: {
+							videoList: videoList.getItems()
+						}
+					});
+					return;
+				}
 				videoList.toggleItemType(pos);
 				broadcast(data);
 

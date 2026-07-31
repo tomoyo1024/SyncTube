@@ -694,8 +694,12 @@ client_Buttons.init = function(main) {
 	haxe_Timer.delay(function() {
 		window.document.querySelector("#userlist-wrap").style.transition = "200ms";
 	},0);
+	var playlistMenuBtn = window.document.querySelector("#playlist-menu-btn");
+	var playlistMenuDropdown = window.document.querySelector("#playlist-menu-dropdown");
 	var toggleSynch = window.document.querySelector("#togglesynch");
 	toggleSynch.onclick = function(e) {
+		playlistMenuDropdown.style.display = "none";
+		playlistMenuBtn.classList.remove("active");
 		var icon = toggleSynch.firstElementChild;
 		if(main.isSyncActive) {
 			if(!window.confirm(Lang.get("toggleSynchConfirm"))) {
@@ -703,13 +707,14 @@ client_Buttons.init = function(main) {
 			}
 			main.isSyncActive = false;
 			icon.style.color = "rgba(238, 72, 67, 0.75)";
-			icon.setAttribute("name","pause");
+			playlistMenuBtn.classList.add("danger");
 		} else {
 			main.isSyncActive = true;
 			icon.style.color = "";
-			icon.setAttribute("name","play");
+			playlistMenuBtn.classList.remove("danger");
 			main.send({ type : "UpdatePlaylist"});
 		}
+		client_Buttons.updateToggleSynchBtn(main);
 	};
 	window.document.querySelector("#mediarefresh").onclick = function(e) {
 		main.refreshPlayer();
@@ -732,13 +737,39 @@ client_Buttons.init = function(main) {
 			icon.setAttribute("name","link");
 		},2000);
 	};
+	playlistMenuBtn.onclick = function(e) {
+		e.stopPropagation();
+		var isOpen = playlistMenuDropdown.style.display != "none";
+		if(isOpen) {
+			playlistMenuDropdown.style.display = "none";
+			playlistMenuBtn.classList.remove("active");
+		} else {
+			playlistMenuDropdown.style.display = "";
+			playlistMenuBtn.classList.add("active");
+		}
+	};
+	window.document.addEventListener("click",function(e) {
+		var target = e.target;
+		if(!playlistMenuBtn.contains(target) && !playlistMenuDropdown.contains(target)) {
+			playlistMenuDropdown.style.display = "none";
+			playlistMenuBtn.classList.remove("active");
+		}
+	});
+	window.document.querySelector("#voteskip").addEventListener("click",function() {
+		playlistMenuDropdown.style.display = "none";
+		playlistMenuBtn.classList.remove("active");
+	});
 	window.document.querySelector("#clearplaylist").onclick = function(e) {
+		playlistMenuDropdown.style.display = "none";
+		playlistMenuBtn.classList.remove("active");
 		if(!window.confirm(Lang.get("clearPlaylistConfirm"))) {
 			return;
 		}
 		main.send({ type : "ClearPlaylist"});
 	};
 	window.document.querySelector("#shuffleplaylist").onclick = function(e) {
+		playlistMenuDropdown.style.display = "none";
+		playlistMenuBtn.classList.remove("active");
 		if(!window.confirm(Lang.get("shufflePlaylistConfirm"))) {
 			return;
 		}
@@ -757,6 +788,8 @@ client_Buttons.init = function(main) {
 	};
 	var showMediaUrl = window.document.querySelector("#showmediaurl");
 	showMediaUrl.onclick = function(e) {
+		playlistMenuDropdown.style.display = "none";
+		playlistMenuBtn.classList.remove("active");
 		if(client_Buttons.showPlayerGroup(showMediaUrl)) {
 			haxe_Timer.delay(function() {
 				window.document.querySelector("#addfromurl").scrollIntoView();
@@ -766,6 +799,8 @@ client_Buttons.init = function(main) {
 	};
 	var showCustomEmbed = window.document.querySelector("#showcustomembed");
 	showCustomEmbed.onclick = function(e) {
+		playlistMenuDropdown.style.display = "none";
+		playlistMenuBtn.classList.remove("active");
 		if(client_Buttons.showPlayerGroup(showCustomEmbed)) {
 			haxe_Timer.delay(function() {
 				window.document.querySelector("#customembed").scrollIntoView();
@@ -919,6 +954,7 @@ client_Buttons.initTextButtons = function(main) {
 			client_JsApi.setVideoSrc(url);
 		});
 	};
+	client_Buttons.updateToggleSynchBtn(main);
 };
 client_Buttons.initHotkeys = function(main,player) {
 	window.document.querySelector("#mediarefresh").title += " (Alt-R)";
@@ -960,6 +996,9 @@ client_Buttons.initHotkeys = function(main,player) {
 		case 83:
 			window.document.querySelector("#voteskip").onclick();
 			break;
+		case 85:
+			window.document.querySelector("#togglesynch").onclick();
+			break;
 		default:
 			return;
 		}
@@ -987,6 +1026,15 @@ client_Buttons.updateHotkeysBtn = function() {
 	var text = Lang.get("hotkeys");
 	var state = client_Buttons.settings.hotkeysEnabled ? Lang.get("on") : Lang.get("off");
 	window.document.querySelector("#hotkeysBtn").innerText = "" + text + ": " + state;
+};
+client_Buttons.updateToggleSynchBtn = function(main) {
+	var toggleSynch = window.document.querySelector("#togglesynch");
+	var span = toggleSynch.querySelector("span");
+	var text = Lang.get(main.isSyncActive ? "disableVideoSync" : "enableVideoSync");
+	toggleSynch.title = "" + text + " (Alt-U)";
+	if(span != null) {
+		span.innerHTML = "" + text + " <span class=\"hotkey-hint\">(Alt-U)</span>";
+	}
 };
 client_Buttons.initChatInputs = function(main) {
 	var guestName = window.document.querySelector("#guestname");
@@ -1096,7 +1144,7 @@ client_FileUploader.prototype = {
 			title = "video";
 		}
 		var name = window.encodeURIComponent(title);
-		var isTemp = window.document.querySelector("#addfromurl .add-temp").checked;
+		var isTemp = client_Main.isTempChecked(window.document.querySelector("#addfromurl .add-temp"));
 		this.uploadLastChunk(file,name,function(data) {
 			if(data.errorId != null) {
 				_gthis.main.serverMessage(data.info,true,false);
@@ -1485,6 +1533,17 @@ client_Main.__name__ = "client.Main";
 client_Main.main = function() {
 	new client_Main();
 };
+client_Main.isTempChecked = function(checkbox) {
+	if(checkbox == null) {
+		return true;
+	}
+	var isHidden = checkbox.style.display == "none";
+	if(isHidden) {
+		return true;
+	} else {
+		return checkbox.checked;
+	}
+};
 client_Main.prototype = {
 	onFirstInteraction: function() {
 		if(this.gotFirstPageInteraction) {
@@ -1670,7 +1729,7 @@ client_Main.prototype = {
 	,addVideoUrl: function(atEnd) {
 		var mediaUrl = window.document.querySelector("#mediaurl");
 		var subsUrl = window.document.querySelector("#subsurl");
-		var isTemp = window.document.querySelector("#addfromurl .add-temp").checked;
+		var isTemp = client_Main.isTempChecked(window.document.querySelector("#addfromurl .add-temp"));
 		var checkboxCache = window.document.querySelector("#cache-on-server");
 		var doCache = checkboxCache.checked && checkboxCache.parentElement.style.display != "none";
 		var url = mediaUrl.value;
@@ -1813,7 +1872,6 @@ client_Main.prototype = {
 		var mediaTitle = window.document.querySelector("#customembed-title");
 		var title = mediaTitle.value;
 		mediaTitle.value = "";
-		var isTemp = window.document.querySelector("#customembed .add-temp").checked;
 		this.player.getIframeData({ url : iframe, atEnd : atEnd},function(data) {
 			if(data.duration == 0) {
 				_gthis.serverMessage(Lang.get("addVideoError"));
@@ -1828,7 +1886,7 @@ client_Main.prototype = {
 			if(data.url == null) {
 				data.url = iframe;
 			}
-			_gthis.send({ type : "AddVideo", addVideo : { item : { url : data.url, title : data.title, author : _gthis.personal.name, duration : data.duration, isTemp : isTemp, doCache : false, playerType : "IframeType"}, atEnd : atEnd}});
+			_gthis.send({ type : "AddVideo", addVideo : { item : { url : data.url, title : data.title, author : _gthis.personal.name, duration : data.duration, isTemp : true, doCache : false, playerType : "IframeType"}, atEnd : atEnd}});
 		});
 	}
 	,removeVideoItem: function(url) {
@@ -1869,7 +1927,7 @@ client_Main.prototype = {
 		var data = JSON.parse(e.data);
 		if(this.config != null && this.config.isVerbose) {
 			var t = data.type;
-			haxe_Log.trace("Event: " + data.type,{ fileName : "src/client/Main.hx", lineNumber : 550, className : "client.Main", methodName : "onMessage", customParams : [Reflect.field(data,t.charAt(0).toLowerCase() + HxOverrides.substr(t,1,null))]});
+			haxe_Log.trace("Event: " + data.type,{ fileName : "src/client/Main.hx", lineNumber : 548, className : "client.Main", methodName : "onMessage", customParams : [Reflect.field(data,t.charAt(0).toLowerCase() + HxOverrides.substr(t,1,null))]});
 		}
 		client_JsApi.fireEvents(data);
 		switch(data.type) {
@@ -2958,12 +3016,19 @@ client_Player.prototype = {
 				_gthis.main.send({ type : "SetNextItem", setNextItem : { pos : i}});
 			}
 			if(btn.classList.contains("qbtn-tmp")) {
-				_gthis.main.send({ type : "ToggleItemType", toggleItemType : { pos : i}});
+				if(e.altKey || e.shiftKey) {
+					_gthis.toggleAllItemTypes(i);
+				} else {
+					_gthis.main.send({ type : "ToggleItemType", toggleItemType : { pos : i}});
+				}
 			}
 			if(btn.classList.contains("qbtn-delete")) {
 				_gthis.main.removeVideoItem(item.querySelector(".qe_title").getAttribute("href"));
 			}
 		};
+	}
+	,toggleAllItemTypes: function(pos) {
+		this.main.send({ type : "ToggleItemType", toggleItemType : { pos : pos, all : true}});
 	}
 	,setNextItem: function(pos) {
 		this.videoList.setNextItem(pos);
@@ -3088,7 +3153,7 @@ client_Player.prototype = {
 			return _gthis.isAudioTrackLoaded = true;
 		};
 		this.audioTrack.onerror = function(e) {
-			haxe_Log.trace(e,{ fileName : "src/client/Player.hx", lineNumber : 223, className : "client.Player", methodName : "setExternalAudioTrack"});
+			haxe_Log.trace(e,{ fileName : "src/client/Player.hx", lineNumber : 238, className : "client.Player", methodName : "setExternalAudioTrack"});
 			_gthis.audioTrack.oncanplay = null;
 			_gthis.audioTrack.onerror = null;
 			_gthis.isAudioTrackLoaded = false;
@@ -3168,12 +3233,10 @@ client_Player.prototype = {
 		if(!this.main.isSyncActive) {
 			return;
 		}
-		var state = isPause ? "pause" : "play";
-		window.document.querySelector("#pause-indicator").setAttribute("name",state);
-		var el2 = window.document.querySelector("#pause-indicator-portrait");
-		el2.setAttribute("name",state);
+		var el = window.document.querySelector("#pause-indicator-chat");
+		el.setAttribute("name",isPause ? "pause" : "play");
 		var tmp = isPause || this.main.hasLeader() ? "" : "none";
-		el2.style.display = tmp;
+		el.style.display = tmp;
 		this.updateTitle();
 	}
 	,onCanBePlayed: function() {
@@ -3681,7 +3744,7 @@ client_Player.prototype = {
 			}
 		};
 		http.onError = function(msg) {
-			haxe_Log.trace(msg,{ fileName : "src/client/Player.hx", lineNumber : 724, className : "client.Player", methodName : "skipAd"});
+			haxe_Log.trace(msg,{ fileName : "src/client/Player.hx", lineNumber : 737, className : "client.Player", methodName : "skipAd"});
 		};
 		http.request();
 	}
@@ -3854,19 +3917,14 @@ client_Utils.getIndex = function(parent,child) {
 	return i;
 };
 client_Utils.hasFullscreen = function() {
-	var doc = window.document;
-	return window.document.fullscreenElement != null || doc.mozFullScreenElement != null || doc.webkitFullscreenElement != null;
+	return window.document.fullscreenElement != null;
 };
 client_Utils.requestFullscreen = function(el) {
-	var el2 = el;
 	if(el.requestFullscreen != null) {
 		el.requestFullscreen();
-	} else if(el2.webkitRequestFullscreen != null) {
-		el2.webkitRequestFullscreen(HTMLElement.ALLOW_KEYBOARD_INPUT);
-	} else {
-		return false;
+		return true;
 	}
-	return true;
+	return false;
 };
 client_Utils.copyToClipboard = function(text) {
 	var clipboardData = window.clipboardData;

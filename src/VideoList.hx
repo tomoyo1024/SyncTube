@@ -76,6 +76,12 @@ class VideoList {
 		items[pos].isTemp = !items[pos].isTemp;
 	}
 
+	public function setAllItemTypes(isTemp:Bool):Void {
+		for (item in items) {
+			item.isTemp = isTemp;
+		}
+	}
+
 	public function removeItem(index:Int):Void {
 		if (index < pos) pos--;
 		items.remove(items[index]);

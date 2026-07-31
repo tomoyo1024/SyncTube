@@ -18,6 +18,7 @@ import haxe.Timer;
 import js.html.Audio;
 import js.html.Element;
 import js.html.InputElement;
+import js.html.MouseEvent;
 
 class Player {
 	final main:Main;
@@ -80,7 +81,7 @@ class Player {
 
 	function initItemButtons():Void {
 		final queue = getEl("#queue");
-		queue.onclick = e -> {
+		queue.onclick = (e:MouseEvent) -> {
 			final btn:Element = cast e.target;
 			final item = btn.parentElement.parentElement;
 			final i = Utils.getIndex(item.parentElement, item);
@@ -101,17 +102,31 @@ class Player {
 				});
 			}
 			if (btn.classList.contains("qbtn-tmp")) {
-				main.send({
-					type: ToggleItemType,
-					toggleItemType: {
-						pos: i
-					}
-				});
+				if (e.altKey || e.shiftKey) {
+					toggleAllItemTypes(i);
+				} else {
+					main.send({
+						type: ToggleItemType,
+						toggleItemType: {
+							pos: i
+						}
+					});
+				}
 			}
 			if (btn.classList.contains("qbtn-delete")) {
 				main.removeVideoItem(item.querySelector(".qe_title").getAttribute("href"));
 			}
 		}
+	}
+
+	public function toggleAllItemTypes(pos:Int):Void {
+		main.send({
+			type: ToggleItemType,
+			toggleItemType: {
+				pos: pos,
+				all: true
+			}
+		});
 	}
 
 	public function setNextItem(pos:Int):Void {
@@ -279,13 +294,11 @@ class Player {
 	public function setPauseIndicator(isPause:Bool):Void {
 		if (!main.isSyncActive) return;
 		final state = isPause ? "pause" : "play";
-		final el = getEl("#pause-indicator");
-		el.setAttribute("name", state);
 
-		final el2 = getEl("#pause-indicator-portrait");
-		el2.setAttribute("name", state);
+		final el = getEl("#pause-indicator-chat");
+		el.setAttribute("name", state);
 		var isVisible = isPause || main.hasLeader();
-		el2.style.display = isVisible ? "" : "none";
+		el.style.display = isVisible ? "" : "none";
 
 		updateTitle();
 	}

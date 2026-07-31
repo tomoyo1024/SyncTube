@@ -1068,7 +1068,7 @@ JsonParser_$5f812affc76e9ba3f21130cdbd3b05d9.__name__ = "JsonParser_5f812affc76e
 JsonParser_$5f812affc76e9ba3f21130cdbd3b05d9.__super__ = json2object_reader_BaseParser;
 JsonParser_$5f812affc76e9ba3f21130cdbd3b05d9.prototype = $extend(json2object_reader_BaseParser.prototype,{
 	onIncorrectType: function(pos,variable) {
-		this.errors.push(json2object_Error.IncorrectType(variable,"{ ?updatePlaylist : Null<{ videoList : Array<VideoItem> }>, ?updateClients : Null<{ clients : Array<ClientData> }>, type : WsEventType, ?togglePlaylistLock : Null<{ isOpen : Bool }>, ?toggleItemType : Null<{ pos : Int }>, ?skipVideo : Null<{ url : String }>, ?setTime : Null<{ time : Float }>, ?setRate : Null<{ rate : Float }>, ?setNextItem : Null<{ pos : Int }>, ?setLeader : Null<{ clientName : String }>, ?serverMessage : Null<{ textId : String }>, ?rewind : Null<{ time : Float }>, ?removeVideo : Null<{ url : String }>, ?progress : Null<{ ?url : Null<String>, type : ProgressType, ratio : Float, ?data : Null<String> }>, ?playItem : Null<{ pos : Int }>, ?play : Null<{ time : Float }>, ?pause : Null<{ time : Float }>, ?message : Null<{ text : String, clientName : String }>, ?logout : Null<{ oldClientName : String, clients : Array<ClientData>, clientName : String }>, ?login : Null<{ ?passHash : Null<String>, ?isUnknownClient : Null<Bool>, ?clients : Null<Array<ClientData>>, clientName : String }>, ?kickClient : Null<{ name : String }>, ?getTime : Null<GetTimeEvent>, ?dump : Null<{ data : String }>, ?connected : Null<{ videoList : Array<VideoItem>, uuid : String, playersCacheSupport : Array<PlayerType>, itemPos : Int, isUnknownClient : Bool, isPlaylistOpen : Bool, history : Array<Message>, globalIp : String, config : Config, clients : Array<ClientData>, clientName : String }>, ?banClient : Null<{ time : Float, name : String }>, ?addVideo : Null<{ item : VideoItem, atEnd : Bool }> }",pos));
+		this.errors.push(json2object_Error.IncorrectType(variable,"{ ?updatePlaylist : Null<{ videoList : Array<VideoItem> }>, ?updateClients : Null<{ clients : Array<ClientData> }>, type : WsEventType, ?togglePlaylistLock : Null<{ isOpen : Bool }>, ?toggleItemType : Null<{ pos : Int, ?all : Null<Bool> }>, ?skipVideo : Null<{ url : String }>, ?setTime : Null<{ time : Float }>, ?setRate : Null<{ rate : Float }>, ?setNextItem : Null<{ pos : Int }>, ?setLeader : Null<{ clientName : String }>, ?serverMessage : Null<{ textId : String }>, ?rewind : Null<{ time : Float }>, ?removeVideo : Null<{ url : String }>, ?progress : Null<{ ?url : Null<String>, type : ProgressType, ratio : Float, ?data : Null<String> }>, ?playItem : Null<{ pos : Int }>, ?play : Null<{ time : Float }>, ?pause : Null<{ time : Float }>, ?message : Null<{ text : String, clientName : String }>, ?logout : Null<{ oldClientName : String, clients : Array<ClientData>, clientName : String }>, ?login : Null<{ ?passHash : Null<String>, ?isUnknownClient : Null<Bool>, ?clients : Null<Array<ClientData>>, clientName : String }>, ?kickClient : Null<{ name : String }>, ?getTime : Null<GetTimeEvent>, ?dump : Null<{ data : String }>, ?connected : Null<{ videoList : Array<VideoItem>, uuid : String, playersCacheSupport : Array<PlayerType>, itemPos : Int, isUnknownClient : Bool, isPlaylistOpen : Bool, history : Array<Message>, globalIp : String, config : Config, clients : Array<ClientData>, clientName : String }>, ?banClient : Null<{ time : Float, name : String }>, ?addVideo : Null<{ item : VideoItem, atEnd : Bool }> }",pos));
 		json2object_reader_BaseParser.prototype.onIncorrectType.call(this,pos,variable);
 	}
 	,loadJsonNull: function(pos,variable) {
@@ -1147,7 +1147,7 @@ JsonParser_$5f812affc76e9ba3f21130cdbd3b05d9.prototype = $extend(json2object_rea
 				this.value.skipVideo = this.loadObjectField(($_=new JsonParser_$bf1400338ef221d86126b3ec267cf395(this.errors,this.putils,1),$bind($_,$_.loadJson)),field,"skipVideo",assigned,this.value.skipVideo,pos);
 				break;
 			case "toggleItemType":
-				this.value.toggleItemType = this.loadObjectField(($_=new JsonParser_$5696efcdbd81f0be9220dc4cfb255706(this.errors,this.putils,1),$bind($_,$_.loadJson)),field,"toggleItemType",assigned,this.value.toggleItemType,pos);
+				this.value.toggleItemType = this.loadObjectField(($_=new JsonParser_$d5567c7dc98bd09ace00c5da6aea116a(this.errors,this.putils,1),$bind($_,$_.loadJson)),field,"toggleItemType",assigned,this.value.toggleItemType,pos);
 				break;
 			case "togglePlaylistLock":
 				this.value.togglePlaylistLock = this.loadObjectField(($_=new JsonParser_$e5a960b500232cc84a0caf718de13706(this.errors,this.putils,1),$bind($_,$_.loadJson)),field,"togglePlaylistLock",assigned,this.value.togglePlaylistLock,pos);
@@ -1168,7 +1168,7 @@ JsonParser_$5f812affc76e9ba3f21130cdbd3b05d9.prototype = $extend(json2object_rea
 		this.objectErrors(assigned,pos);
 	}
 	,getAuto: function() {
-		return { addVideo : new JsonParser_$17f62a9968afd16686d4888a98c34102([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), banClient : new JsonParser_$cceff829ad5e63207b6f78bebb03c69a([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), connected : new JsonParser_$d011018d886fa55f8828ebb1e93413c3([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), dump : new JsonParser_$dda5f87e2972892b16c7b833df96706a([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), getTime : new JsonParser_$feded5bdb427eb48f39e60029d5dca4a([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), kickClient : new JsonParser_$b2777fc36a3f1c43a2ae7d80ba0572ca([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), login : new JsonParser_$128275a4734b926daca1924fc6a200c7([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), logout : new JsonParser_$8d3a3702ec359ae3022bce905b75550b([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), message : new JsonParser_$33c34d246ae14cf949ef186cb0e1d8eb([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), pause : new JsonParser_$6340d11111c9ffddbd7ebb0d12d7c162([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), play : new JsonParser_$6340d11111c9ffddbd7ebb0d12d7c162([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), playItem : new JsonParser_$5696efcdbd81f0be9220dc4cfb255706([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), progress : new JsonParser_$df6a9f7e332eb07b32b03fe169ced290([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), removeVideo : new JsonParser_$bf1400338ef221d86126b3ec267cf395([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), rewind : new JsonParser_$6340d11111c9ffddbd7ebb0d12d7c162([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), serverMessage : new JsonParser_$d1c1e71f4452df068de6cecc104f6dd6([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), setLeader : new JsonParser_$65985176838b1da92d970132a0cb6d58([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), setNextItem : new JsonParser_$5696efcdbd81f0be9220dc4cfb255706([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), setRate : new JsonParser_$359929cb56fda98b8740cbc66ef083c4([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), setTime : new JsonParser_$6340d11111c9ffddbd7ebb0d12d7c162([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), skipVideo : new JsonParser_$bf1400338ef221d86126b3ec267cf395([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), toggleItemType : new JsonParser_$5696efcdbd81f0be9220dc4cfb255706([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), togglePlaylistLock : new JsonParser_$e5a960b500232cc84a0caf718de13706([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), type : new JsonParser_$d8e5213783812cec0906ca233f0379dc([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), updateClients : new JsonParser_$126814d365d277a375ef70de1963f53d([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), updatePlaylist : new JsonParser_$a82c17fc41c21179c58e1d406d2b20cd([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1)))};
+		return { addVideo : new JsonParser_$17f62a9968afd16686d4888a98c34102([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), banClient : new JsonParser_$cceff829ad5e63207b6f78bebb03c69a([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), connected : new JsonParser_$d011018d886fa55f8828ebb1e93413c3([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), dump : new JsonParser_$dda5f87e2972892b16c7b833df96706a([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), getTime : new JsonParser_$feded5bdb427eb48f39e60029d5dca4a([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), kickClient : new JsonParser_$b2777fc36a3f1c43a2ae7d80ba0572ca([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), login : new JsonParser_$128275a4734b926daca1924fc6a200c7([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), logout : new JsonParser_$8d3a3702ec359ae3022bce905b75550b([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), message : new JsonParser_$33c34d246ae14cf949ef186cb0e1d8eb([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), pause : new JsonParser_$6340d11111c9ffddbd7ebb0d12d7c162([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), play : new JsonParser_$6340d11111c9ffddbd7ebb0d12d7c162([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), playItem : new JsonParser_$5696efcdbd81f0be9220dc4cfb255706([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), progress : new JsonParser_$df6a9f7e332eb07b32b03fe169ced290([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), removeVideo : new JsonParser_$bf1400338ef221d86126b3ec267cf395([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), rewind : new JsonParser_$6340d11111c9ffddbd7ebb0d12d7c162([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), serverMessage : new JsonParser_$d1c1e71f4452df068de6cecc104f6dd6([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), setLeader : new JsonParser_$65985176838b1da92d970132a0cb6d58([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), setNextItem : new JsonParser_$5696efcdbd81f0be9220dc4cfb255706([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), setRate : new JsonParser_$359929cb56fda98b8740cbc66ef083c4([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), setTime : new JsonParser_$6340d11111c9ffddbd7ebb0d12d7c162([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), skipVideo : new JsonParser_$bf1400338ef221d86126b3ec267cf395([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), toggleItemType : new JsonParser_$d5567c7dc98bd09ace00c5da6aea116a([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), togglePlaylistLock : new JsonParser_$e5a960b500232cc84a0caf718de13706([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), type : new JsonParser_$d8e5213783812cec0906ca233f0379dc([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), updateClients : new JsonParser_$126814d365d277a375ef70de1963f53d([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), updatePlaylist : new JsonParser_$a82c17fc41c21179c58e1d406d2b20cd([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1)))};
 	}
 	,__class__: JsonParser_$5f812affc76e9ba3f21130cdbd3b05d9
 });
@@ -1703,6 +1703,48 @@ JsonParser_$d1c1e71f4452df068de6cecc104f6dd6.prototype = $extend(json2object_rea
 		return { textId : new JsonParser_$27118326006d3829667a400ad23d5d98([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1)))};
 	}
 	,__class__: JsonParser_$d1c1e71f4452df068de6cecc104f6dd6
+});
+var JsonParser_$d5567c7dc98bd09ace00c5da6aea116a = function(errors,putils,errorType) {
+	if(errorType == null) {
+		errorType = 0;
+	}
+	json2object_reader_BaseParser.call(this,errors,putils,errorType);
+};
+JsonParser_$d5567c7dc98bd09ace00c5da6aea116a.__name__ = "JsonParser_d5567c7dc98bd09ace00c5da6aea116a";
+JsonParser_$d5567c7dc98bd09ace00c5da6aea116a.__super__ = json2object_reader_BaseParser;
+JsonParser_$d5567c7dc98bd09ace00c5da6aea116a.prototype = $extend(json2object_reader_BaseParser.prototype,{
+	onIncorrectType: function(pos,variable) {
+		this.errors.push(json2object_Error.IncorrectType(variable,"{ pos : Int, ?all : Null<Bool> }",pos));
+		json2object_reader_BaseParser.prototype.onIncorrectType.call(this,pos,variable);
+	}
+	,loadJsonNull: function(pos,variable) {
+		this.value = null;
+	}
+	,loadJsonObject: function(o,pos,variable) {
+		var assigned = new haxe_ds_StringMap();
+		this.objectSetupAssign(assigned,["all","pos"],[true,false]);
+		this.value = this.getAuto();
+		var _g = 0;
+		while(_g < o.length) {
+			var field = o[_g];
+			++_g;
+			switch(field.name) {
+			case "all":
+				this.value.all = this.loadObjectField(($_=new JsonParser_$f55acea3678203c700715b781ad1ef0c(this.errors,this.putils,1),$bind($_,$_.loadJson)),field,"all",assigned,this.value.all,pos);
+				break;
+			case "pos":
+				this.value.pos = this.loadObjectField(($_=new JsonParser_$1686a6c336b71b36d77354cea19a8b52(this.errors,this.putils,1),$bind($_,$_.loadJson)),field,"pos",assigned,this.value.pos,pos);
+				break;
+			default:
+				this.errors.push(json2object_Error.UnknownVariable(field.name,this.putils.convertPosition(field.namePos)));
+			}
+		}
+		this.objectErrors(assigned,pos);
+	}
+	,getAuto: function() {
+		return { all : new JsonParser_$f55acea3678203c700715b781ad1ef0c([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1))), pos : new JsonParser_$1686a6c336b71b36d77354cea19a8b52([],this.putils,0).loadJson(new hxjsonast_Json(hxjsonast_JsonValue.JNull,new hxjsonast_Position("",0,1)))};
+	}
+	,__class__: JsonParser_$d5567c7dc98bd09ace00c5da6aea116a
 });
 var JsonParser_$d7778d0c64b6ba21494c97f77a66885a = function(errors,putils,errorType) {
 	if(errorType == null) {
@@ -2540,6 +2582,11 @@ VideoList.prototype = {
 	}
 	,toggleItemType: function(pos) {
 		this.items[pos].isTemp = !this.items[pos].isTemp;
+	}
+	,setAllItemTypes: function(isTemp) {
+		var _g = 0;
+		var _g1 = this.items;
+		while(_g < _g1.length) _g1[_g++].isTemp = isTemp;
 	}
 	,removeItem: function(index) {
 		if(index < this.pos) {
@@ -5150,7 +5197,7 @@ server_Main.prototype = {
 			if((client.group & 8) == 0) {
 				return;
 			}
-			haxe_Log.trace("Crashing...",{ fileName : "src/server/Main.hx", lineNumber : 1086, className : "server.Main", methodName : "onMessage"});
+			haxe_Log.trace("Crashing...",{ fileName : "src/server/Main.hx", lineNumber : 1097, className : "server.Main", methodName : "onMessage"});
 			null[1]++;
 			break;
 		case "Disconnected":
@@ -5570,6 +5617,11 @@ server_Main.prototype = {
 			if(!this.videoList.hasItem(pos)) {
 				return;
 			}
+			if(data.toggleItemType.all == true) {
+				this.videoList.setAllItemTypes(!this.videoList.items[pos].isTemp);
+				this.broadcast({ type : "UpdatePlaylist", updatePlaylist : { videoList : this.videoList.items}});
+				return;
+			}
 			this.videoList.toggleItemType(pos);
 			this.broadcast(data);
 			break;
@@ -5768,7 +5820,7 @@ server_Main.prototype = {
 			client.setGroupFlag(ClientGroup.Banned,!isOutdated);
 			if(isOutdated) {
 				HxOverrides.remove(this.userList.bans,ban);
-				haxe_Log.trace("" + client.name + " ban removed",{ fileName : "src/server/Main.hx", lineNumber : 1276, className : "server.Main", methodName : "checkBan"});
+				haxe_Log.trace("" + client.name + " ban removed",{ fileName : "src/server/Main.hx", lineNumber : 1287, className : "server.Main", methodName : "checkBan"});
 				this.sendClientList();
 			}
 			break;

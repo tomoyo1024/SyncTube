@@ -10,7 +10,7 @@ Default channel example: https://synctube.onrender.com/
 - External `vtt`/`srt`/`ass` subtitles support
 - External audiotrack / voiceover support
 - `/30`, `/-21`, etc chat commands to rewind video playback by seconds
-- Hotkeys (`Alt-P` for global play/pause, [etc](https://github.com/RblSb/SyncTube/blob/382f9b2ebedca905028341825350a0fa69d88673/src/client/Buttons.hx#L416-L427))
+- [Hotkeys](#hotkeys) (`Alt-P` for global play/pause, etc)
 - Compact view button with page fullscreen on Android
 - Playback rate synchronization (with leader)
 - Links mask: `foo.com/bar${1-4}.mp4` to add multiple items
@@ -86,6 +86,15 @@ It just works, but you can also check [user/ folder](/user/README.md) for server
 - `/kick Foo` - Force `Foo` disconnection until page reload
 - `/dump` - Download state dump to report issues
 - `/crash` - Crash server if you need to test your auto-restart solution
+
+### Hotkeys
+- `Alt-L` - Request leader
+- `Alt-P` - Request leader and toggle pause/play for everyone
+- `Alt-R` - Refresh player
+- `Alt-F` - Fullscreen player
+- `Alt-S` - Vote for skip
+- `Alt-C` - Retrieve playlist links
+- `Alt-U` - Disable/enable video synchronization
 
 ## Plugins
 - [octosubs](https://github.com/RblSb/SyncTube-octosubs) - More colorful `ASS`/`SSA` subtitles support

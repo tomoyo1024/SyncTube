@@ -30,17 +30,11 @@
         </header>
         <!-- Video controls -->
         <span class="controls">
-          <button id="togglesynch" title="${toggleVideoSync}">
-            <ion-icon id="pause-indicator" name="play"></ion-icon>
-          </button>
           <button id="mediarefresh" title="${refreshPlayer}">
             <ion-icon name="refresh"></ion-icon>
           </button>
           <button id="fullscreenbtn" title="${fullscreenPlayer}">
             <ion-icon name="expand"></ion-icon>
-          </button>
-          <button id="voteskip" title="${voteForSkip}">
-            <ion-icon name="play-skip-forward"></ion-icon>
           </button>
         </span>
       </div>
@@ -64,16 +58,34 @@
             data-target="#addfromurl" aria-expanded="false">
             <ion-icon name="add"></ion-icon>
           </button>
-          <button class="collapsed" id="showcustomembed" title="${embedCustomFrame}" data-toggle="collapse"
-            data-target="#customembed" aria-expanded="false">
-            <ion-icon name="code"></ion-icon>
-          </button>
-          <button id="shuffleplaylist" title="${shufflePlaylist}">
-            <ion-icon name="shuffle"></ion-icon>
-          </button>
-          <button id="clearplaylist" title="${clearPlaylist}">
-            <ion-icon name="close"></ion-icon>
-          </button>
+          <div class="playlist-menu-wrap">
+            <button id="playlist-menu-btn">
+              <ion-icon name="menu"></ion-icon>
+            </button>
+            <div id="playlist-menu-dropdown" class="playlist-menu-dropdown" style="display: none;">
+              <button class="playlist-menu-item" id="voteskip" title="${voteForSkip}">
+                <ion-icon name="play-skip-forward"></ion-icon>
+                <span>${voteForSkip} <span class="hotkey-hint">(Alt-S)</span></span>
+              </button>
+              <button class="playlist-menu-item" id="togglesynch" title="${disableVideoSync}">
+                <ion-icon name="unlink"></ion-icon>
+                <span>${disableVideoSync} <span class="hotkey-hint">(Alt-U)</span></span>
+              </button>
+              <button class="collapsed playlist-menu-item" id="showcustomembed" data-toggle="collapse"
+                data-target="#customembed" aria-expanded="false">
+                <ion-icon name="code"></ion-icon>
+                <span>${embedCustomFrame}</span>
+              </button>
+              <button class="playlist-menu-item" id="shuffleplaylist">
+                <ion-icon name="shuffle"></ion-icon>
+                <span>${shufflePlaylist}</span>
+              </button>
+              <button class="playlist-menu-item" id="clearplaylist">
+                <ion-icon name="close"></ion-icon>
+                <span>${clearPlaylist}</span>
+              </button>
+            </div>
+          </div>
         </span>
       </div>
       <!-- Playlist metadata -->
@@ -109,7 +121,7 @@
             <input id="voiceoverurl" type="text" placeholder="${voiceOverAudioTrackUrlOptional}">
           </div>
           <div class="checkbox-row">
-            <label class="checkbox-row-item">
+            <label class="checkbox-row-item" style="display: none;">
               <input id="add-temp" class="add-temp" type="checkbox" checked>${addAsTemporary}
             </label>
             <label class="checkbox-row-item">
@@ -128,9 +140,6 @@
           <input id="customembed-title" type="text" placeholder="${optionalTitle}">
           <textarea id="customembed-content" rows="5"
             placeholder="${pasteEmbedCodeAndClick}. &#10;${acceptableEmbedCodesAre} &lt;iframe&gt; ${or} &lt;object&gt;. &#10;${customEmbedsCannotBeSynchronized}."></textarea>
-          <label class="checkbox-row-item">
-            <input id="add-temp-embed" class="add-temp" type="checkbox" checked>${addAsTemporary}
-          </label>
           <div class="queue-buttons">
             <button id="ce_queue_next">${queueNext}</button>
             <button id="ce_queue_end">${queueLast}</button>
@@ -160,7 +169,7 @@
       <button id="userlisttoggle" title="${toggleUserList}">
         <ion-icon name="chevron-down"></ion-icon>
         <span id="usercount">${connection}...</span>
-        <ion-icon id="pause-indicator-portrait" name="play" style="display: none;"></ion-icon>
+        <ion-icon id="pause-indicator-chat" name="play" style="display: none;"></ion-icon>
       </button>
       <span>
         <button id="leader_btn" class="unselectable" title="${leaderDesc}">${leader}</button>

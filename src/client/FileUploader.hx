@@ -25,7 +25,7 @@ class FileUploader {
 		final name = (window : Dynamic).encodeURIComponent(title);
 
 		final checkboxTemp:InputElement = getEl("#addfromurl .add-temp");
-		final isTemp = checkboxTemp.checked;
+		final isTemp = Main.isTempChecked(checkboxTemp);
 
 		// send last chunk separately to allow server file streaming while uploading
 		uploadLastChunk(file, name, data -> {

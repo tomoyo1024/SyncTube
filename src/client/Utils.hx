@@ -74,25 +74,19 @@ class Utils {
 	}
 
 	public static function hasFullscreen():Bool {
-		final doc:Dynamic = document;
-		return (document.fullscreenElement != null || doc.mozFullScreenElement != null
-			|| doc.webkitFullscreenElement != null);
+		return document.fullscreenElement != null;
 	}
 
 	public static function requestFullscreen(el:Element):Bool {
-		final el2:Dynamic = el;
 		if (el.requestFullscreen != null) {
 			el.requestFullscreen();
-		} else if (el2.webkitRequestFullscreen != null) {
-			el2.webkitRequestFullscreen(untyped Element.ALLOW_KEYBOARD_INPUT);
-		} else return false;
-		return true;
+			return true;
+		}
+		return false;
 	}
 
-	public static function cancelFullscreen(el:Element):Void {
-		final doc:Dynamic = document;
-		if (doc.cancelFullScreen != null) doc.cancelFullScreen();
-		else if (doc.webkitCancelFullScreen != null) doc.webkitCancelFullScreen();
+	public static function cancelFullscreen(el:Element = null):Void {
+		if (document.exitFullscreen != null) document.exitFullscreen();
 	}
 
 	public static function toggleFullscreen(el:Element):Bool {

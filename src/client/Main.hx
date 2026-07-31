@@ -300,7 +300,7 @@ class Main {
 		final mediaUrl:InputElement = getEl("#mediaurl");
 		final subsUrl:InputElement = getEl("#subsurl");
 		final checkboxTemp:InputElement = getEl("#addfromurl .add-temp");
-		final isTemp = checkboxTemp.checked;
+		final isTemp = isTempChecked(checkboxTemp);
 		final checkboxCache:InputElement = getEl("#cache-on-server");
 		final doCache = checkboxCache.checked
 			&& checkboxCache.parentElement.style.display != "none";
@@ -465,8 +465,6 @@ class Main {
 		final mediaTitle:InputElement = getEl("#customembed-title");
 		final title = mediaTitle.value;
 		mediaTitle.value = "";
-		final checkbox:InputElement = getEl("#customembed .add-temp");
-		final isTemp = checkbox.checked;
 		final obj:VideoDataRequest = {
 			url: iframe,
 			atEnd: atEnd
@@ -487,7 +485,7 @@ class Main {
 						title: data.title,
 						author: personal.name,
 						duration: data.duration,
-						isTemp: isTemp,
+						isTemp: true,
 						doCache: false,
 						playerType: IframeType
 					},
@@ -1521,6 +1519,12 @@ class Main {
 
 	public function getLeader():Null<Client> {
 		return clients.getLeader();
+	}
+
+	public static function isTempChecked(checkbox:Null<InputElement>):Bool {
+		if (checkbox == null) return true;
+		final isHidden = checkbox.style.display == "none";
+		return isHidden ? true : checkbox.checked;
 	}
 
 	public function hasLeaderOnPauseRequest():Bool {
