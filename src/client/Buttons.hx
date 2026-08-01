@@ -169,11 +169,18 @@ class Buttons {
 		}
 		final fullscreenBtn = getEl("#fullscreenbtn");
 		fullscreenBtn.onclick = e -> {
-			if ((Utils.isTouch() || main.isVerbose()) && !Utils.hasFullscreen()) {
-				window.scrollTo(0, 0);
-				Utils.requestFullscreen(document.documentElement);
+			Utils.toggleFullscreen(getEl("#ytapiplayer"));
+		}
+		final chatBtn = getEl("#fullscreen-chat-btn");
+		chatBtn.onclick = e -> {
+			e.stopPropagation();
+			e.preventDefault();
+			clearUnreadChatMessages();
+
+			if (settings.pageFullscreen) {
+				Utils.switchToPageFullscreen();
 			} else {
-				Utils.requestFullscreen(getEl("#ytapiplayer"));
+				Utils.cancelFullscreen();
 			}
 		}
 		initPageFullscreen();
@@ -376,6 +383,40 @@ class Buttons {
 		}
 		updateHotkeysBtn();
 
+		final pageFullscreenBtn = getEl("#pageFullscreenBtn");
+		pageFullscreenBtn.onclick = e -> {
+			settings.pageFullscreen = !settings.pageFullscreen;
+			Settings.write(settings);
+			updatePageFullscreenBtn();
+
+			if (settings.pageFullscreen) {
+				Utils.switchToPageFullscreen();
+			} else {
+				Utils.cancelFullscreen();
+			}
+		}
+		updatePageFullscreenBtn();
+
+		final fullscreenActionBtn = getEl("#fullscreenActionBtn");
+		if (fullscreenActionBtn != null) {
+			fullscreenActionBtn.onclick = e -> {
+				settings.fullscreenAction = !settings.fullscreenAction;
+				Settings.write(settings);
+				updateFullscreenActionBtn();
+			}
+			updateFullscreenActionBtn();
+		}
+
+		document.body.addEventListener("click", e -> {
+			if (!settings.pageFullscreen) return;
+			if (Utils.hasFullscreen()) return;
+			final target:Element = cast e.target;
+			if (target != null
+				&& target.closest("button, input, a, textarea, select, #optionsPanel, #chatline, #userlist, .queue_sortable, .nav") != null)
+				return;
+			Utils.requestFullscreen(document.documentElement);
+		});
+
 		final removeBtn = getEl("#removePlayerBtn");
 		removeBtn.onclick = e -> {
 			final isActive = main.toggleVideoElement();
@@ -456,6 +497,26 @@ class Buttons {
 		final text = Lang.get("hotkeys");
 		final state = settings.hotkeysEnabled ? Lang.get("on") : Lang.get("off");
 		getEl("#hotkeysBtn").innerText = '$text: $state';
+
+		if (settings.hotkeysEnabled) {
+			document.body.classList.remove("hotkeys-disabled");
+		} else {
+			document.body.classList.add("hotkeys-disabled");
+		}
+	}
+
+	static function updatePageFullscreenBtn():Void {
+		final btn = getEl("#pageFullscreenBtn");
+		final text = Lang.get("pageFullscreen");
+		final state = settings.pageFullscreen ? Lang.get("on") : Lang.get("off");
+		btn.innerText = '$text: $state';
+	}
+
+	static function updateFullscreenActionBtn():Void {
+		final btn = getEl("#fullscreenActionBtn");
+		final text = Lang.get(Utils.isTouch() ? "fullscreenActionTouch" : "fullscreenActionDesktop");
+		final state = settings.fullscreenAction ? Lang.get("on") : Lang.get("off");
+		btn.innerText = '$text: $state';
 	}
 
 	public static function updateToggleSynchBtn(main:Main):Void {
@@ -545,12 +606,32 @@ class Buttons {
 		return (window : Dynamic).visualViewport;
 	}
 
+	public static var hasUnreadChatMessages:Bool = false;
+
+	public static function onNewChatMessage():Void {
+		hasUnreadChatMessages = true;
+		updateFullscreenChatBtn();
+	}
+
+	public static function clearUnreadChatMessages():Void {
+		hasUnreadChatMessages = false;
+		updateFullscreenChatBtn();
+	}
+
+	public static function updateFullscreenChatBtn():Void {
+		final chatBtn = getEl("#fullscreen-chat-btn");
+		final isFs = Utils.hasFullscreen();
+		if (isFs && hasUnreadChatMessages) {
+			chatBtn.classList.add("has-unread");
+		} else {
+			chatBtn.classList.remove("has-unread");
+		}
+	}
+
 	static function initPageFullscreen():Void {
 		document.onfullscreenchange = e -> {
-			final el = document.documentElement;
-			if (Utils.hasFullscreen()) {
-				if (e.target == el) el.classList.add("mobile-view");
-			} else el.classList.remove("mobile-view");
+			clearUnreadChatMessages();
+			updateFullscreenChatBtn();
 		}
 	}
 }

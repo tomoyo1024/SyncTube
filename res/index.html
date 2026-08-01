@@ -22,7 +22,11 @@
   <main id="video">
     <!-- Player -->
     <section id="player">
-      <div id="ytapiplayer" class="embed-responsive"></div>
+      <div id="ytapiplayer" class="embed-responsive">
+        <button id="fullscreen-chat-btn" class="fullscreen-chat-btn">
+          <ion-icon name="chatbubble"></ion-icon>
+        </button>
+      </div>
       <!-- Video info -->
       <div class="info video-info">
         <header>
@@ -180,66 +184,70 @@
         </button>
       </span>
     </div>
-    <!-- User list -->
-    <div id="userlist-wrap" class="collapsible">
-      <div id="userlist"></div>
-    </div>
-    <!-- Settings list -->
-    <ul id="optionsPanel" class="collapse" aria-expanded="false">
-      <div id="optionsList" class="collapse">
-        <div>
+    <div id="chat-body">
+      <!-- User list -->
+      <div id="userlist-wrap" class="collapsible">
+        <div id="userlist"></div>
+      </div>
+      <!-- Settings list -->
+      <ul id="optionsPanel" class="collapse" aria-expanded="false">
+        <div id="optionsList" class="collapse">
           <div>
-            <h4>${account}</h4>
-            <li><button id="exitBtn">${login}</button></li>
-          </div>
-          <div>
-            <h4>${general}</h4>
-            <li><button id="hotkeysBtn"><span>${hotkeys}</span></button></li>
-            <li><button id="swapLayoutBtn" title="${swapLayout}"><span>${swapLayout}</span></button></li>
-          </div>
-          <div>
-            <h4>${video}</h4>
-            <li><button id="synchThresholdBtn"><span>${synchThreshold}</span></button></li>
-            <li><button id="setVideoUrlBtn"><span>${setVideoUrl}</span></button></li>
-            <li><button id="selectLocalVideoBtn"><span>${selectLocalVideo}</span></button></li>
-            <li><button id="removePlayerBtn"><span>${removePlayer}</span></button></li>
-          </div>
-          <div id="adminMenu" style="display: none;">
-            <h4>${chat}</h4>
-            <li><button id="clearchatbtn"><span>${clearChat}</span></button></li>
+            <div>
+              <h4>${account}</h4>
+              <li><button id="exitBtn">${login}</button></li>
+            </div>
+            <div>
+              <h4>${general}</h4>
+              <li><button id="swapLayoutBtn" title="${swapLayout}"><span>${swapLayout}</span></button></li>
+              <li><button id="pageFullscreenBtn" title="${pageFullscreen}"><span>${pageFullscreen}</span></button></li>
+              <li><button id="synchThresholdBtn"><span>${synchThreshold}</span></button></li>
+              <li><button id="hotkeysBtn"><span>${hotkeys}</span></button></li>
+            </div>
+            <div>
+              <h4>${player}</h4>
+              <li><button id="fullscreenActionBtn"></button></li>
+              <li><button id="setVideoUrlBtn"><span>${setVideoUrl}</span></button></li>
+              <li><button id="selectLocalVideoBtn"><span>${selectLocalVideo}</span></button></li>
+              <li><button id="removePlayerBtn"><span>${removePlayer}</span></button></li>
+            </div>
+            <div id="adminMenu" style="display: none;">
+              <h4>${chat}</h4>
+              <li><button id="clearchatbtn"><span>${clearChat}</span></button></li>
+            </div>
           </div>
         </div>
-      </div>
-    </ul>
-    <!-- Messages -->
-    <div id="messagebuffer" style="flex-direction: column-reverse;"></div>
-    <div id="chat-inputs-wrapper">
-      <div id="dynamic-chin" class="collapsed" style="display: none;"></div>
-      <button id="scroll-to-chat-end" style="display: none; opacity: 0;" class="active">
-        <ion-icon name="arrow-down" role="img" class="md hydrated"></ion-icon>
-      </button>
-      <!-- Message input -->
-      <div id="chatbox">
-        <input id="chatline" type="text" placeholder="${chatlinePlaceholder}">
-        <button id="smilesbtn" title="${emotes}">
-          <ion-icon name="happy"></ion-icon>
+      </ul>
+      <!-- Messages -->
+      <div id="messagebuffer" style="flex-direction: column-reverse;"></div>
+      <div id="chat-inputs-wrapper">
+        <div id="dynamic-chin" class="collapsed" style="display: none;"></div>
+        <button id="scroll-to-chat-end" style="display: none; opacity: 0;" class="active">
+          <ion-icon name="arrow-down" role="img" class="md hydrated"></ion-icon>
         </button>
-      </div>
-      <div id="smiles-wrap" class="collapsible" style="display: none;">
-        <div id="smiles-list"></div>
-      </div>
-      <!-- Guest login -->
-      <div id="guestlogin" style="display: none;">
-        <label>${enterAsGuest}</label>
-        <input id="guestname" type="text" placeholder="${yourName}">
-      </div>
-      <div id="guestpassword" style="display: none;">
-        <label>${enterUserPassword}</label>
-        <div id="passwordbox">
-          <input id="guestpass" type="text" placeholder="${yourPassword}">
-          <button id="guestpass_icon">
-            <ion-icon name="eye"></ion-icon>
+        <!-- Message input -->
+        <div id="chatbox">
+          <input id="chatline" type="text" placeholder="${chatlinePlaceholder}">
+          <button id="smilesbtn" title="${emotes}">
+            <ion-icon name="happy"></ion-icon>
           </button>
+        </div>
+        <div id="smiles-wrap" class="collapsible" style="display: none;">
+          <div id="smiles-list"></div>
+        </div>
+        <!-- Guest login -->
+        <div id="guestlogin" style="display: none;">
+          <label>${enterAsGuest}</label>
+          <input id="guestname" type="text" placeholder="${yourName}">
+        </div>
+        <div id="guestpassword" style="display: none;">
+          <label>${enterUserPassword}</label>
+          <div id="passwordbox">
+            <input id="guestpass" type="text" placeholder="${yourPassword}">
+            <button id="guestpass_icon">
+              <ion-icon name="eye"></ion-icon>
+            </button>
+          </div>
         </div>
       </div>
     </div>

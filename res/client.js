@@ -347,13 +347,6 @@ Reflect.fields = function(o) {
 	}
 	return a;
 };
-Reflect.deleteField = function(o,field) {
-	if(!Object.prototype.hasOwnProperty.call(o,field)) {
-		return false;
-	}
-	delete(o[field]);
-	return true;
-};
 Reflect.copy = function(o) {
 	if(o == null) {
 		return null;
@@ -720,11 +713,16 @@ client_Buttons.init = function(main) {
 		main.refreshPlayer();
 	};
 	window.document.querySelector("#fullscreenbtn").onclick = function(e) {
-		if((client_Utils.isTouch() || main.isVerbose()) && !client_Utils.hasFullscreen()) {
-			window.scrollTo(0,0);
-			return client_Utils.requestFullscreen(window.document.documentElement);
+		return client_Utils.toggleFullscreen(window.document.querySelector("#ytapiplayer"));
+	};
+	window.document.querySelector("#fullscreen-chat-btn").onclick = function(e) {
+		e.stopPropagation();
+		e.preventDefault();
+		client_Buttons.clearUnreadChatMessages();
+		if(client_Buttons.settings.pageFullscreen) {
+			client_Utils.switchToPageFullscreen();
 		} else {
-			return client_Utils.requestFullscreen(window.document.querySelector("#ytapiplayer"));
+			client_Utils.cancelFullscreen();
 		}
 	};
 	client_Buttons.initPageFullscreen();
@@ -933,6 +931,39 @@ client_Buttons.initTextButtons = function(main) {
 		client_Buttons.updateHotkeysBtn();
 	};
 	client_Buttons.updateHotkeysBtn();
+	window.document.querySelector("#pageFullscreenBtn").onclick = function(e) {
+		client_Buttons.settings.pageFullscreen = !client_Buttons.settings.pageFullscreen;
+		client_Settings.write(client_Buttons.settings);
+		client_Buttons.updatePageFullscreenBtn();
+		if(client_Buttons.settings.pageFullscreen) {
+			client_Utils.switchToPageFullscreen();
+		} else {
+			client_Utils.cancelFullscreen();
+		}
+	};
+	client_Buttons.updatePageFullscreenBtn();
+	var fullscreenActionBtn = window.document.querySelector("#fullscreenActionBtn");
+	if(fullscreenActionBtn != null) {
+		fullscreenActionBtn.onclick = function(e) {
+			client_Buttons.settings.fullscreenAction = !client_Buttons.settings.fullscreenAction;
+			client_Settings.write(client_Buttons.settings);
+			client_Buttons.updateFullscreenActionBtn();
+		};
+		client_Buttons.updateFullscreenActionBtn();
+	}
+	window.document.body.addEventListener("click",function(e) {
+		if(!client_Buttons.settings.pageFullscreen) {
+			return;
+		}
+		if(client_Utils.hasFullscreen()) {
+			return;
+		}
+		var target = e.target;
+		if(target != null && target.closest("button, input, a, textarea, select, #optionsPanel, #chatline, #userlist, .queue_sortable, .nav") != null) {
+			return;
+		}
+		client_Utils.requestFullscreen(window.document.documentElement);
+	});
 	var removeBtn = window.document.querySelector("#removePlayerBtn");
 	removeBtn.onclick = function(e) {
 		if(main.toggleVideoElement()) {
@@ -1026,6 +1057,17 @@ client_Buttons.updateHotkeysBtn = function() {
 	var text = Lang.get("hotkeys");
 	var state = client_Buttons.settings.hotkeysEnabled ? Lang.get("on") : Lang.get("off");
 	window.document.querySelector("#hotkeysBtn").innerText = "" + text + ": " + state;
+	if(client_Buttons.settings.hotkeysEnabled) {
+		window.document.body.classList.remove("hotkeys-disabled");
+	} else {
+		window.document.body.classList.add("hotkeys-disabled");
+	}
+};
+client_Buttons.updatePageFullscreenBtn = function() {
+	window.document.querySelector("#pageFullscreenBtn").innerText = "" + Lang.get("pageFullscreen") + ": " + (client_Buttons.settings.pageFullscreen ? Lang.get("on") : Lang.get("off"));
+};
+client_Buttons.updateFullscreenActionBtn = function() {
+	window.document.querySelector("#fullscreenActionBtn").innerText = "" + Lang.get(client_Utils.isTouch() ? "fullscreenActionTouch" : "fullscreenActionDesktop") + ": " + (client_Buttons.settings.fullscreenAction ? Lang.get("on") : Lang.get("off"));
 };
 client_Buttons.updateToggleSynchBtn = function(main) {
 	var toggleSynch = window.document.querySelector("#togglesynch");
@@ -1119,16 +1161,26 @@ client_Buttons.onViewportResize = function() {
 	}
 	window.document.querySelector("#chat").style.height = "" + h + "px";
 };
+client_Buttons.onNewChatMessage = function() {
+	client_Buttons.hasUnreadChatMessages = true;
+	client_Buttons.updateFullscreenChatBtn();
+};
+client_Buttons.clearUnreadChatMessages = function() {
+	client_Buttons.hasUnreadChatMessages = false;
+	client_Buttons.updateFullscreenChatBtn();
+};
+client_Buttons.updateFullscreenChatBtn = function() {
+	var chatBtn = window.document.querySelector("#fullscreen-chat-btn");
+	if(client_Utils.hasFullscreen() && client_Buttons.hasUnreadChatMessages) {
+		chatBtn.classList.add("has-unread");
+	} else {
+		chatBtn.classList.remove("has-unread");
+	}
+};
 client_Buttons.initPageFullscreen = function() {
 	window.document.onfullscreenchange = function(e) {
-		var el = window.document.documentElement;
-		if(client_Utils.hasFullscreen()) {
-			if(e.target == el) {
-				el.classList.add("mobile-view");
-			}
-		} else {
-			el.classList.remove("mobile-view");
-		}
+		client_Buttons.clearUnreadChatMessages();
+		client_Buttons.updateFullscreenChatBtn();
 	};
 };
 var client_FileUploader = function(main) {
@@ -1493,7 +1545,7 @@ var client_Main = function() {
 	if(this.host == "") {
 		this.host = "localhost";
 	}
-	client_Settings.init({ version : 6, uuid : null, name : "", hash : "", chatSize : 300, synchThreshold : 2, isSwapped : false, isUserListHidden : true, latestLinks : [], latestSubs : [], hotkeysEnabled : true, showHintList : true, checkboxes : [], checkedCache : []},$bind(this,this.settingsPatcher));
+	client_Settings.init({ version : 7, uuid : null, name : "", hash : "", chatSize : 300, synchThreshold : 2, isSwapped : false, isUserListHidden : true, latestLinks : [], latestSubs : [], hotkeysEnabled : true, pageFullscreen : false, fullscreenAction : client_Utils.isTouch(), showHintList : true, checkboxes : [], checkedCache : []},$bind(this,this.settingsPatcher));
 	this.settings = client_Settings.read();
 	this.initListeners();
 	this.onTimeGet = new haxe_Timer(this.settings.synchThreshold * 1000);
@@ -1561,32 +1613,18 @@ client_Main.prototype = {
 	}
 	,settingsPatcher: function(data,version) {
 		switch(version) {
-		case 1:
-			data.hotkeysEnabled = true;
-			break;
-		case 2:
-			data.latestSubs = [];
-			break;
-		case 3:
-			data.showHintList = true;
-			break;
-		case 4:
-			data.checkboxes = [];
+		case 1:case 2:case 3:case 4:
 			break;
 		case 5:
-			var data1 = data;
-			data1.checkedCache = [];
-			Reflect.deleteField(data1,"playerSize");
-			Reflect.deleteField(data1,"isExtendedPlayer");
-			var oldCheck = Lambda.find(data1.checkboxes,function(item) {
-				return item.id == "cache-on-server";
-			});
-			if(oldCheck != null) {
-				HxOverrides.remove(data1.checkboxes,oldCheck);
-				data1.checkedCache.push("YoutubeType");
-			}
+			client_Settings.reset();
+			data = client_Settings.read();
 			break;
 		case 6:
+			var data1 = data;
+			data1.pageFullscreen = false;
+			data1.fullscreenAction = client_Utils.isTouch();
+			break;
+		case 7:
 			throw haxe_Exception.thrown("skipped version " + version);
 		default:
 			throw haxe_Exception.thrown("skipped version " + version);
@@ -1927,7 +1965,7 @@ client_Main.prototype = {
 		var data = JSON.parse(e.data);
 		if(this.config != null && this.config.isVerbose) {
 			var t = data.type;
-			haxe_Log.trace("Event: " + data.type,{ fileName : "src/client/Main.hx", lineNumber : 548, className : "client.Main", methodName : "onMessage", customParams : [Reflect.field(data,t.charAt(0).toLowerCase() + HxOverrides.substr(t,1,null))]});
+			haxe_Log.trace("Event: " + data.type,{ fileName : "src/client/Main.hx", lineNumber : 536, className : "client.Main", methodName : "onMessage", customParams : [Reflect.field(data,t.charAt(0).toLowerCase() + HxOverrides.substr(t,1,null))]});
 		}
 		client_JsApi.fireEvents(data);
 		switch(data.type) {
@@ -2590,6 +2628,9 @@ client_Main.prototype = {
 		if(this.onBlinkTab == null) {
 			this.blinkTabWithTitle("*" + Lang.get("chat") + "*");
 		}
+		if(name != this.personal.name) {
+			client_Buttons.onNewChatMessage();
+		}
 	}
 	,getFirstMessageDiv: function() {
 		if(this.isMessageBufferReversed()) {
@@ -2952,9 +2993,6 @@ client_Main.prototype = {
 		}
 		return this.gotFirstPageInteraction;
 	}
-	,isVerbose: function() {
-		return this.config.isVerbose;
-	}
 	,escapeRegExp: function(regex) {
 		return js_lib_NativeStringTools.replace(regex,new RegExp("([.*+?^${}()|[\\]\\\\])","g".split("u").join("")),"\\$1");
 	}
@@ -3000,6 +3038,22 @@ var client_Player = function(main) {
 			_gthis.inUserInteraction = false;
 		},350);
 	},{ });
+	this.playerEl.oncontextmenu = function(e) {
+		if(!main.settings.fullscreenAction) {
+			return;
+		}
+		e.preventDefault();
+		var isPlayerFs = window.document.fullscreenElement == _gthis.playerEl;
+		if(isPlayerFs) {
+			if(main.settings.pageFullscreen) {
+				client_Utils.switchToPageFullscreen();
+			} else {
+				client_Utils.cancelFullscreen();
+			}
+		} else {
+			client_Utils.requestFullscreen(_gthis.playerEl);
+		}
+	};
 };
 client_Player.__name__ = "client.Player";
 client_Player.prototype = {
@@ -3153,7 +3207,7 @@ client_Player.prototype = {
 			return _gthis.isAudioTrackLoaded = true;
 		};
 		this.audioTrack.onerror = function(e) {
-			haxe_Log.trace(e,{ fileName : "src/client/Player.hx", lineNumber : 238, className : "client.Player", methodName : "setExternalAudioTrack"});
+			haxe_Log.trace(e,{ fileName : "src/client/Player.hx", lineNumber : 255, className : "client.Player", methodName : "setExternalAudioTrack"});
 			_gthis.audioTrack.oncanplay = null;
 			_gthis.audioTrack.onerror = null;
 			_gthis.isAudioTrackLoaded = false;
@@ -3587,7 +3641,7 @@ client_Player.prototype = {
 		return this.videoList.pos;
 	}
 	,hasVideo: function() {
-		return this.playerEl.children.length != 0;
+		return this.playerEl.querySelector("video, iframe, embed, object") != null;
 	}
 	,getDuration: function() {
 		if(this.videoList.pos >= this.videoList.items.length) {
@@ -3744,7 +3798,7 @@ client_Player.prototype = {
 			}
 		};
 		http.onError = function(msg) {
-			haxe_Log.trace(msg,{ fileName : "src/client/Player.hx", lineNumber : 737, className : "client.Player", methodName : "skipAd"});
+			haxe_Log.trace(msg,{ fileName : "src/client/Player.hx", lineNumber : 754, className : "client.Player", methodName : "skipAd"});
 		};
 		http.request();
 	}
@@ -3838,6 +3892,12 @@ client_Settings.write = function(data) {
 	}
 	client_Settings.storage.setItem("data",JSON.stringify(data));
 };
+client_Settings.reset = function() {
+	if(client_Settings.defaults == null) {
+		throw haxe_Exception.thrown("reset: default data is null");
+	}
+	client_Settings.write(client_Settings.defaults);
+};
 var client_Split = function(settings) {
 	this.settings = settings;
 	this.split = new Split({ columnGutters : [{ element : window.document.querySelector(".gutter"), track : 1}], minSize : 200, snapOffset : 0, onDragEnd : $bind(this,this.saveSize)});
@@ -3925,6 +3985,40 @@ client_Utils.requestFullscreen = function(el) {
 		return true;
 	}
 	return false;
+};
+client_Utils.cancelFullscreen = function(el) {
+	if(window.document.exitFullscreen != null) {
+		window.document.exitFullscreen();
+	}
+};
+client_Utils.switchToPageFullscreen = function() {
+	var docEl = window.document.documentElement;
+	if(window.document.fullscreenElement == docEl) {
+		return;
+	}
+	if(window.document.fullscreenElement == null) {
+		client_Utils.requestFullscreen(docEl);
+		return;
+	}
+	var promise = window.document.exitFullscreen();
+	if(promise != null) {
+		promise.then(function(_) {
+			client_Utils.switchToPageFullscreen();
+		}).catch(function(_) {
+			return;
+		});
+	} else {
+		haxe_Timer.delay(function() {
+			client_Utils.switchToPageFullscreen();
+		},1);
+	}
+};
+client_Utils.toggleFullscreen = function(el) {
+	if(client_Utils.hasFullscreen()) {
+		client_Utils.cancelFullscreen(el);
+		return false;
+	}
+	return client_Utils.requestFullscreen(el);
 };
 client_Utils.copyToClipboard = function(text) {
 	var clipboardData = window.clipboardData;
@@ -6514,6 +6608,7 @@ js_Boot.__toStr = ({ }).toString;
 Lang.langs = new haxe_ds_StringMap();
 Lang.ids = ["en","ru"];
 Lang.lang = HxOverrides.substr($global.navigator.language,0,2).toLowerCase();
+client_Buttons.hasUnreadChatMessages = false;
 client_JsApi.subtitleFormats = [];
 client_JsApi.videoChange = [];
 client_JsApi.videoRemove = [];

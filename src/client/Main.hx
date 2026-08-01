@@ -27,7 +27,7 @@ import js.html.WebSocket;
 
 class Main {
 	public static var instance(default, null):Main;
-	static inline var SETTINGS_VERSION = 6;
+	static inline var SETTINGS_VERSION = 7;
 	static inline var MAX_CHAT_MESSAGES = 200;
 
 	public final settings:ClientSettings;
@@ -91,6 +91,8 @@ class Main {
 			latestLinks: [],
 			latestSubs: [],
 			hotkeysEnabled: true,
+			pageFullscreen: false,
+			fullscreenAction: Utils.isTouch(),
 			showHintList: true,
 			checkboxes: [],
 			checkedCache: [],
@@ -138,28 +140,14 @@ class Main {
 
 	function settingsPatcher(data:Any, version:Int):Any {
 		switch (version) {
-			case 1:
-				final data:ClientSettings = data;
-				data.hotkeysEnabled = true;
-			case 2:
-				final data:ClientSettings = data;
-				data.latestSubs = [];
-			case 3:
-				final data:ClientSettings = data;
-				data.showHintList = true;
-			case 4:
-				final data:ClientSettings = data;
-				data.checkboxes = [];
+			case 1, 2, 3, 4:
 			case 5:
+				Settings.reset();
+				data = Settings.read();
+			case 6:
 				final data:ClientSettings = data;
-				data.checkedCache = [];
-				Reflect.deleteField(data, "playerSize");
-				Reflect.deleteField(data, "isExtendedPlayer");
-				final oldCheck = data.checkboxes.find(item -> item.id == "cache-on-server");
-				if (oldCheck != null) {
-					data.checkboxes.remove(oldCheck);
-					data.checkedCache.push(YoutubeType);
-				}
+				data.pageFullscreen = false;
+				data.fullscreenAction = Utils.isTouch();
 			case SETTINGS_VERSION, _:
 				throw 'skipped version $version';
 		}
@@ -1170,6 +1158,7 @@ class Main {
 			showScrollToChatEndBtn();
 		}
 		if (onBlinkTab == null) blinkTabWithTitle('*${Lang.get("chat")}*');
+		if (name != personal.name) Buttons.onNewChatMessage();
 	}
 
 	function getFirstMessageDiv():Null<Element> {

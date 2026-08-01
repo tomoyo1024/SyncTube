@@ -14,6 +14,8 @@ typedef ClientSettings = {
 	var latestLinks:Array<String>;
 	var latestSubs:Array<String>;
 	var hotkeysEnabled:Bool;
+	var pageFullscreen:Bool;
+	var fullscreenAction:Bool;
 	var showHintList:Bool;
 	var checkboxes:Array<{id:String, checked:Null<Bool>}>;
 	var checkedCache:Array<PlayerType>;

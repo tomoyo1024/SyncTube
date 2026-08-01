@@ -1,5 +1,6 @@
 package client;
 
+import haxe.Timer;
 import haxe.io.Mime;
 import js.Browser.document;
 import js.Browser.navigator;
@@ -87,6 +88,23 @@ class Utils {
 
 	public static function cancelFullscreen(el:Element = null):Void {
 		if (document.exitFullscreen != null) document.exitFullscreen();
+	}
+
+	public static function switchToPageFullscreen():Void {
+		final docEl = document.documentElement;
+		if (document.fullscreenElement == docEl) return;
+
+		if (document.fullscreenElement == null) {
+			requestFullscreen(docEl);
+			return;
+		}
+
+		final promise = document.exitFullscreen();
+		if (promise != null) {
+			promise.then(_ -> switchToPageFullscreen()).catchError(_ -> {});
+		} else {
+			Timer.delay(() -> switchToPageFullscreen(), 1);
+		}
 	}
 
 	public static function toggleFullscreen(el:Element):Bool {

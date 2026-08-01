@@ -15,6 +15,7 @@ import client.players.Youtube;
 import haxe.Http;
 import haxe.Json;
 import haxe.Timer;
+import js.Browser.document;
 import js.html.Audio;
 import js.html.Element;
 import js.html.InputElement;
@@ -77,6 +78,22 @@ class Player {
 			// for some reason Chrome has ~300ms event delay
 			Timer.delay(() -> inUserInteraction = false, 350);
 		}, {});
+
+		playerEl.oncontextmenu = e -> {
+			if (!main.settings.fullscreenAction) return;
+			e.preventDefault();
+
+			final isPlayerFs = document.fullscreenElement == playerEl;
+			if (isPlayerFs) {
+				if (main.settings.pageFullscreen) {
+					Utils.switchToPageFullscreen();
+				} else {
+					Utils.cancelFullscreen();
+				}
+			} else {
+				Utils.requestFullscreen(playerEl);
+			}
+		}
 	}
 
 	function initItemButtons():Void {
@@ -628,7 +645,7 @@ class Player {
 	}
 
 	public function hasVideo():Bool {
-		return playerEl.children.length != 0;
+		return playerEl.querySelector("video, iframe, embed, object") != null;
 	}
 
 	public function getDuration():Float {
