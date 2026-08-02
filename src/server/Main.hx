@@ -73,6 +73,7 @@ class Main {
 	final videoTimer = new VideoTimer();
 	final messages:Array<Message> = [];
 	final flashbacks:Array<FlashbackItem> = [];
+	final skipVotes:Array<String> = [];
 	final logger:Logger;
 	/**
 		Stop video timer after `EMPTY_ROOM_CALLBACK_DELAY` in case
@@ -604,6 +605,31 @@ class Main {
 						isServerPause = true;
 					}
 				}
+				skipVotes.remove(client.name);
+				if (skipVotes.length > 0) {
+					final required = Math.ceil(clients.length * config.voteSkipRatio);
+					// disconnected non-voters can generate skip, since ratio changes
+					if (skipVotes.length >= required) {
+						if (videoList.length > 0) {
+							skipVideo({
+								type: SkipVideo,
+								skipVideo: {
+									url: videoList.currentItem.url
+								}
+							});
+						}
+					} else {
+						// still send new required count
+						broadcast({
+							type: SkipVideoStats,
+							skipVideoStats: {
+								voted: skipVotes.length,
+								total: clients.length,
+								required: required
+							}
+						});
+					}
+				}
 				if (clients.length == 0) {
 					emptyRoomCallbackTimer?.stop();
 					emptyRoomCallbackTimer = Timer.delay(() -> {
@@ -831,6 +857,7 @@ class Main {
 				if (index == -1) return;
 
 				final isCurrent = videoList.currentItem.url == url;
+				if (isCurrent) skipVotes.resize(0);
 				if (isCurrent && videoTimer.getTime() > FLASHBACK_DIST) {
 					saveFlashbackTime(videoList.currentItem);
 				}
@@ -841,10 +868,31 @@ class Main {
 					if (!videoList.currentItem.isPlayable()) pauseForIncompleteItem();
 					else restartWaitTimer();
 				}
+				if (videoList.length == 0) {
+					videoTimer.stop();
+					isServerPause = false;
+				}
 
 			case SkipVideo:
 				if (!checkPermission(client, RemoveVideoPerm)) return;
-				skipVideo(data);
+				if (videoList.length == 0) return;
+				if (videoList.currentItem.url != data.skipVideo.url) return;
+				if (!skipVotes.contains(client.name)) skipVotes.push(client.name);
+				final required = Math.ceil(clients.length * config.voteSkipRatio);
+				if (skipVotes.length >= required) {
+					skipVideo(data);
+				} else {
+					broadcast({
+						type: SkipVideoStats,
+						skipVideoStats: {
+							voted: skipVotes.length,
+							total: clients.length,
+							required: required
+						}
+					});
+				}
+
+			case SkipVideoStats:
 
 			case Pause:
 				if (videoList.length == 0) return;
@@ -1034,6 +1082,7 @@ class Main {
 				}
 				videoTimer.stop();
 				videoList.clear();
+				isServerPause = false;
 				broadcast(data);
 
 			case ShufflePlaylist:
@@ -1171,6 +1220,7 @@ class Main {
 		if (videoList.length == 0) return;
 		final item = videoList.currentItem;
 		if (item.url != data.skipVideo.url) return;
+		skipVotes.resize(0);
 		final dur = videoList.currentItem.duration;
 		if (videoTimer.getTime() > FLASHBACK_DIST
 			&& videoTimer.getTime() < dur - FLASHBACK_DIST) {
@@ -1180,6 +1230,9 @@ class Main {
 		if (videoList.length > 0) {
 			if (!videoList.currentItem.isPlayable()) pauseForIncompleteItem();
 			else restartWaitTimer();
+		} else {
+			videoTimer.stop();
+			isServerPause = false;
 		}
 		broadcast(data);
 	}

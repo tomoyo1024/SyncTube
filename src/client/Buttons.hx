@@ -201,8 +201,10 @@ class Buttons {
 			if (isOpen) {
 				closePlaylistMenu();
 			} else {
+				main.hasSeenSkipVote = true;
 				playlistMenuDropdown.style.display = "";
 				playlistMenuBtn.classList.add("active");
+				getEl("#playlist-menu-indicator").style.display = "none";
 			}
 		}
 

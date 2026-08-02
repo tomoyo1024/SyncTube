@@ -39,6 +39,11 @@ class Main {
 	public var isPlaylistOpen(default, null) = true;
 	public var playersCacheSupport(default, null):Array<PlayerType> = [];
 	public var showingServerPause(default, null) = false;
+	public var hasSeenSkipVote = false;
+
+	var skipVoteCount = 0;
+	var skipVoteRequired = 0;
+
 	/** How much time passed since lastState.time update **/
 	public var timeFromLastState(default, null) = 0.0;
 	public final lastState:GetTimeEvent = {
@@ -209,7 +214,7 @@ class Main {
 
 		final voteSkip = getEl("#voteskip");
 		voteSkip.onclick = e -> {
-			if (Utils.isTouch() && !window.confirm(Lang.get("skipItemConfirm"))) return;
+			hasSeenSkipVote = true;
 			if (player.isListEmpty()) return;
 			final items = player.getItems();
 			final pos = player.getItemPos();
@@ -604,41 +609,57 @@ class Main {
 				if (player.itemsLength() == 1) player.setVideo(0);
 
 			case VideoLoaded:
-				lastState.paused = false;
-				lastState.pausedByServer = false;
+				resetSkipVoteUi();
 				lastState.time = 0;
 				updateLastStateTime();
+				updatePauseState(false);
 				player.setTime(0);
 				player.play();
-				player.setPauseIndicator(false);
 				// try to sync leader after with GetTime events
 				if (isLeader() && !player.isVideoLoaded()) forceSyncNextTick = true;
 
 			case RemoveVideo:
+				final isCurrent = player.getCurrentItem()?.url == data.removeVideo.url;
 				cancelUpload(data.removeVideo.url);
 				player.removeItem(data.removeVideo.url);
+				if (isCurrent) resetSkipVoteUi();
+				updateServerPauseUi();
 				if (player.isListEmpty()) player.pause();
 
 			case SkipVideo:
+				resetSkipVoteUi();
 				player.skipItem(data.skipVideo.url);
+				updateServerPauseUi();
 				if (player.isListEmpty()) player.pause();
+
+			case SkipVideoStats:
+				if (data.skipVideoStats.voted == 1 && skipVoteCount == 0) {
+					serverMessage(Lang.get("skipVoteInitiated"));
+				}
+				skipVoteCount = data.skipVideoStats.voted;
+				skipVoteRequired = data.skipVideoStats.required;
+
+				final stat = '($skipVoteCount/$skipVoteRequired)';
+				getEl("#voteskip-text").textContent = '$stat ${Lang.get("voteForSkip")}';
+
+				final indicator = getEl("#playlist-menu-indicator");
+				final dropdown = getEl("#playlist-menu-dropdown");
+				if (!hasSeenSkipVote && dropdown.style.display == "none") {
+					indicator.style.display = "";
+				}
 
 			case Pause:
 				lastState.time = data.pause.time;
-				lastState.paused = true;
 				updateLastStateTime();
-				player.setPauseIndicator(lastState.paused);
-				updateUserList();
+				updatePauseState(true, lastState.pausedByServer);
 				if (isLeader()) return;
 				player.pause();
 				player.setTime(data.pause.time);
 
 			case Play:
 				lastState.time = data.play.time;
-				lastState.paused = false;
 				updateLastStateTime();
-				player.setPauseIndicator(lastState.paused);
-				updateUserList();
+				updatePauseState(false);
 				if (isLeader()) return;
 				final synchThreshold = settings.synchThreshold;
 				final newTime = data.play.time;
@@ -653,21 +674,11 @@ class Main {
 				data.getTime.pausedByServer ??= false;
 				data.getTime.rate ??= 1;
 
-				final isPauseChanged = lastState.paused != data.getTime.paused;
 				lastState.time = data.getTime.time;
-				lastState.paused = data.getTime.paused;
-				lastState.pausedByServer = data.getTime.pausedByServer;
 				lastState.rate = data.getTime.rate;
 				updateLastStateTime();
 
-				if (isPauseChanged) updateUserList();
-
-				final pausedByServer = data.getTime.pausedByServer;
-				if (pausedByServer) {
-					showServerUnpause();
-				} else if (showingServerPause) {
-					hideDynamicChin();
-				}
+				updatePauseState(data.getTime.paused, data.getTime.pausedByServer);
 
 				if (player.getPlaybackRate() != data.getTime.rate) {
 					player.setPlaybackRate(data.getTime.rate);
@@ -720,6 +731,7 @@ class Main {
 				updateUserList();
 				setLeaderButton(isLeader());
 				if (isLeader()) player.onSetTime();
+				if (!hasLeader()) updatePauseState(lastState.paused);
 
 			case PlayItem:
 				player.setVideo(data.playItem.pos);
@@ -734,7 +746,9 @@ class Main {
 				clearChat();
 
 			case ClearPlaylist:
+				resetSkipVoteUi();
 				player.clearItems();
+				updateServerPauseUi();
 				if (player.isListEmpty()) player.pause();
 
 			case ShufflePlaylist: // server-only
@@ -1189,22 +1203,57 @@ class Main {
 		}, {once: true});
 	}
 
-	public function showServerUnpause():Void {
-		if (showingServerPause) return;
-		showingServerPause = true;
+	public function resetSkipVoteUi():Void {
+		hasSeenSkipVote = false;
+		skipVoteCount = 0;
+		skipVoteRequired = 0;
+		getEl("#voteskip-text").textContent = Lang.get("voteForSkip");
+		getEl("#playlist-menu-indicator").style.display = "none";
+	}
+
+	public function updatePauseState(paused:Bool, pausedByServer = false):Void {
+		final isPauseChanged = lastState.paused != paused;
+		lastState.paused = paused;
+		lastState.pausedByServer = pausedByServer;
+
+		player.setPauseIndicator(lastState.paused);
+		if (isPauseChanged) updateUserList();
+
+		updateServerPauseUi();
+	}
+
+	public function updateServerPauseUi():Void {
+		final show = lastState.pausedByServer && !player.isListEmpty();
+		if (showingServerPause == show) return;
+		showingServerPause = show;
+		renderDynamicChin();
+	}
+
+	public function renderDynamicChin():Void {
 		final chin = getEl("#dynamic-chin");
+		if (!showingServerPause) {
+			hideDynamicChinAnim();
+			return;
+		}
 		chin.innerHTML = "";
+
+		final wrapper = document.createDivElement();
+		wrapper.style.display = "flex";
+		wrapper.style.flexDirection = "column";
+		wrapper.style.gap = "0.5rem";
 
 		final div = document.createDivElement();
 		div.className = "server-whisper";
+		div.style.textAlign = "center";
 		div.textContent = Lang.get("leaderDisconnectedServerOnPause");
-		chin.appendChild(div);
+		wrapper.appendChild(div);
+
 		final btn = document.createButtonElement();
 		btn.id = "unpause-server";
 		btn.textContent = Lang.get("unpause");
-		chin.appendChild(btn);
+		wrapper.appendChild(btn);
 		btn.onclick = () -> {
-			hideDynamicChin();
+			updatePauseState(lastState.paused, false);
 			send({
 				type: SetLeader,
 				setLeader: {
@@ -1213,11 +1262,12 @@ class Main {
 			});
 			JsApi.once(SetLeader, event -> removeLeader());
 		}
+		chin.appendChild(wrapper);
 
-		showDynamicChin();
+		showDynamicChinAnim();
 	}
 
-	function showDynamicChin():Void {
+	function showDynamicChinAnim():Void {
 		final chin = getEl("#dynamic-chin");
 		if (chin.style.display == "") return;
 		chin.style.display = "";
@@ -1238,9 +1288,9 @@ class Main {
 		chin.addEventListener("transitionend", onTransitionEnd);
 	}
 
-	public function hideDynamicChin():Void {
-		showingServerPause = false;
+	function hideDynamicChinAnim():Void {
 		final chin = getEl("#dynamic-chin");
+		if (chin.style.display == "none") return;
 		final h = chin.clientHeight;
 		chin.style.height = '${h}px';
 		Timer.delay(() -> {

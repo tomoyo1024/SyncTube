@@ -400,6 +400,20 @@ header h4 {
   margin-left: .5rem;
 }
 
+#playlist-menu-btn {
+  position: relative;
+}
+
+#playlist-menu-indicator {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  background-color: var(--accent);
+  border-radius: 50%;
+}
+
 .playlist-menu-dropdown {
   position: absolute;
   top: calc(100% + .5rem);

@@ -742,8 +742,10 @@ client_Buttons.init = function(main) {
 			playlistMenuDropdown.style.display = "none";
 			playlistMenuBtn.classList.remove("active");
 		} else {
+			main.hasSeenSkipVote = true;
 			playlistMenuDropdown.style.display = "";
 			playlistMenuBtn.classList.add("active");
+			window.document.querySelector("#playlist-menu-indicator").style.display = "none";
 		}
 	};
 	window.document.addEventListener("click",function(e) {
@@ -1542,6 +1544,9 @@ var client_Main = function() {
 	this.lastStateTimeStamp = 0.0;
 	this.lastState = { time : 0, rate : 1.0, paused : false, pausedByServer : false};
 	this.timeFromLastState = 0.0;
+	this.skipVoteRequired = 0;
+	this.skipVoteCount = 0;
+	this.hasSeenSkipVote = false;
 	this.showingServerPause = false;
 	this.playersCacheSupport = [];
 	this.isPlaylistOpen = true;
@@ -1707,9 +1712,7 @@ client_Main.prototype = {
 			e.preventDefault();
 		};
 		window.document.querySelector("#voteskip").onclick = function(e) {
-			if(client_Utils.isTouch() && !window.confirm(Lang.get("skipItemConfirm"))) {
-				return;
-			}
+			_gthis.hasSeenSkipVote = true;
 			if(_gthis.player.isListEmpty()) {
 				return;
 			}
@@ -1977,7 +1980,7 @@ client_Main.prototype = {
 		var data = JSON.parse(e.data);
 		if(this.config != null && this.config.isVerbose) {
 			var t = data.type;
-			haxe_Log.trace("Event: " + data.type,{ fileName : "src/client/Main.hx", lineNumber : 536, className : "client.Main", methodName : "onMessage", customParams : [Reflect.field(data,t.charAt(0).toLowerCase() + HxOverrides.substr(t,1,null))]});
+			haxe_Log.trace("Event: " + data.type,{ fileName : "src/client/Main.hx", lineNumber : 541, className : "client.Main", methodName : "onMessage", customParams : [Reflect.field(data,t.charAt(0).toLowerCase() + HxOverrides.substr(t,1,null))]});
 		}
 		client_JsApi.fireEvents(data);
 		switch(data.type) {
@@ -1993,7 +1996,9 @@ client_Main.prototype = {
 			this.clearChat();
 			break;
 		case "ClearPlaylist":
+			this.resetSkipVoteUi();
 			this.player.clearItems();
+			this.updateServerPauseUi();
 			if(this.player.isListEmpty()) {
 				this.player.pause();
 			}
@@ -2024,20 +2029,10 @@ client_Main.prototype = {
 			if(fh.rate == null) {
 				fh.rate = 1;
 			}
-			var isPauseChanged = this.lastState.paused != data.getTime.paused;
 			this.lastState.time = data.getTime.time;
-			this.lastState.paused = data.getTime.paused;
-			this.lastState.pausedByServer = data.getTime.pausedByServer;
 			this.lastState.rate = data.getTime.rate;
 			this.updateLastStateTime();
-			if(isPauseChanged) {
-				this.updateUserList();
-			}
-			if(data.getTime.pausedByServer) {
-				this.showServerUnpause();
-			} else if(this.showingServerPause) {
-				this.hideDynamicChin();
-			}
+			this.updatePauseState(data.getTime.paused,data.getTime.pausedByServer);
 			if(this.player.getPlaybackRate() != data.getTime.rate) {
 				this.player.setPlaybackRate(data.getTime.rate);
 			}
@@ -2106,10 +2101,8 @@ client_Main.prototype = {
 			break;
 		case "Pause":
 			this.lastState.time = data.pause.time;
-			this.lastState.paused = true;
 			this.updateLastStateTime();
-			this.player.setPauseIndicator(this.lastState.paused);
-			this.updateUserList();
+			this.updatePauseState(true,this.lastState.pausedByServer);
 			if((this.personal.group & 4) != 0) {
 				return;
 			}
@@ -2118,10 +2111,8 @@ client_Main.prototype = {
 			break;
 		case "Play":
 			this.lastState.time = data.play.time;
-			this.lastState.paused = false;
 			this.updateLastStateTime();
-			this.player.setPauseIndicator(this.lastState.paused);
-			this.updateUserList();
+			this.updatePauseState(false);
 			if((this.personal.group & 4) != 0) {
 				return;
 			}
@@ -2139,8 +2130,14 @@ client_Main.prototype = {
 			this.onProgressEvent(data);
 			break;
 		case "RemoveVideo":
+			var tmp = this.player.getCurrentItem();
+			var isCurrent = (tmp != null ? tmp.url : null) == data.removeVideo.url;
 			this.cancelUpload(data.removeVideo.url);
 			this.player.removeItem(data.removeVideo.url);
+			if(isCurrent) {
+				this.resetSkipVoteUi();
+			}
+			this.updateServerPauseUi();
 			if(this.player.isListEmpty()) {
 				this.player.pause();
 			}
@@ -2171,6 +2168,9 @@ client_Main.prototype = {
 			if((this.personal.group & 4) != 0) {
 				this.player.onSetTime();
 			}
+			if(!this.hasLeader()) {
+				this.updatePauseState(this.lastState.paused);
+			}
 			break;
 		case "SetNextItem":
 			this.player.setNextItem(data.setNextItem.pos);
@@ -2194,9 +2194,26 @@ client_Main.prototype = {
 		case "ShufflePlaylist":
 			break;
 		case "SkipVideo":
+			this.resetSkipVoteUi();
 			this.player.skipItem(data.skipVideo.url);
+			this.updateServerPauseUi();
 			if(this.player.isListEmpty()) {
 				this.player.pause();
+			}
+			break;
+		case "SkipVideoStats":
+			if(data.skipVideoStats.voted == 1 && this.skipVoteCount == 0) {
+				this.serverMessage(Lang.get("skipVoteInitiated"));
+			}
+			this.skipVoteCount = data.skipVideoStats.voted;
+			this.skipVoteRequired = data.skipVideoStats.required;
+			var tmp = "" + ("(" + this.skipVoteCount + "/" + this.skipVoteRequired + ")") + " ";
+			var tmp1 = Lang.get("voteForSkip");
+			window.document.querySelector("#voteskip-text").textContent = tmp + tmp1;
+			var indicator = window.document.querySelector("#playlist-menu-indicator");
+			var dropdown = window.document.querySelector("#playlist-menu-dropdown");
+			if(!this.hasSeenSkipVote && dropdown.style.display == "none") {
+				indicator.style.display = "";
 			}
 			break;
 		case "ToggleItemType":
@@ -2217,13 +2234,12 @@ client_Main.prototype = {
 			this.player.setItems(data.updatePlaylist.videoList);
 			break;
 		case "VideoLoaded":
-			this.lastState.paused = false;
-			this.lastState.pausedByServer = false;
+			this.resetSkipVoteUi();
 			this.lastState.time = 0;
 			this.updateLastStateTime();
+			this.updatePauseState(false);
 			this.player.setTime(0);
 			this.player.play();
-			this.player.setPauseIndicator(false);
 			if((this.personal.group & 4) != 0 && !this.player.isVideoLoaded()) {
 				this.forceSyncNextTick = true;
 			}
@@ -2682,32 +2698,66 @@ client_Main.prototype = {
 			return btn.style.display = "none";
 		},{ once : true});
 	}
-	,showServerUnpause: function() {
-		var _gthis = this;
-		if(this.showingServerPause) {
+	,resetSkipVoteUi: function() {
+		this.hasSeenSkipVote = false;
+		this.skipVoteCount = 0;
+		this.skipVoteRequired = 0;
+		window.document.querySelector("#voteskip-text").textContent = Lang.get("voteForSkip");
+		window.document.querySelector("#playlist-menu-indicator").style.display = "none";
+	}
+	,updatePauseState: function(paused,pausedByServer) {
+		if(pausedByServer == null) {
+			pausedByServer = false;
+		}
+		var isPauseChanged = this.lastState.paused != paused;
+		this.lastState.paused = paused;
+		this.lastState.pausedByServer = pausedByServer;
+		this.player.setPauseIndicator(this.lastState.paused);
+		if(isPauseChanged) {
+			this.updateUserList();
+		}
+		this.updateServerPauseUi();
+	}
+	,updateServerPauseUi: function() {
+		var show = this.lastState.pausedByServer && !this.player.isListEmpty();
+		if(this.showingServerPause == show) {
 			return;
 		}
-		this.showingServerPause = true;
+		this.showingServerPause = show;
+		this.renderDynamicChin();
+	}
+	,renderDynamicChin: function() {
+		var _gthis = this;
 		var chin = window.document.querySelector("#dynamic-chin");
+		if(!this.showingServerPause) {
+			this.hideDynamicChinAnim();
+			return;
+		}
 		chin.innerHTML = "";
+		var wrapper = window.document.createElement("div");
+		wrapper.style.display = "flex";
+		wrapper.style.flexDirection = "column";
+		wrapper.style.gap = "0.5rem";
 		var div = window.document.createElement("div");
 		div.className = "server-whisper";
+		div.style.textAlign = "center";
 		div.textContent = Lang.get("leaderDisconnectedServerOnPause");
-		chin.appendChild(div);
+		wrapper.appendChild(div);
 		var btn = window.document.createElement("button");
 		btn.id = "unpause-server";
 		btn.textContent = Lang.get("unpause");
-		chin.appendChild(btn);
+		wrapper.appendChild(btn);
 		btn.onclick = function() {
-			_gthis.hideDynamicChin();
+			_gthis.updatePauseState(_gthis.lastState.paused,false);
 			_gthis.send({ type : "SetLeader", setLeader : { clientName : _gthis.personal.name}});
 			client_JsApi.once("SetLeader",function(event) {
 				_gthis.removeLeader();
 			});
 		};
-		this.showDynamicChin();
+		chin.appendChild(wrapper);
+		this.showDynamicChinAnim();
 	}
-	,showDynamicChin: function() {
+	,showDynamicChinAnim: function() {
 		var chin = window.document.querySelector("#dynamic-chin");
 		if(chin.style.display == "") {
 			return;
@@ -2732,9 +2782,11 @@ client_Main.prototype = {
 		};
 		chin.addEventListener("transitionend",onTransitionEnd);
 	}
-	,hideDynamicChin: function() {
-		this.showingServerPause = false;
+	,hideDynamicChinAnim: function() {
 		var chin = window.document.querySelector("#dynamic-chin");
+		if(chin.style.display == "none") {
+			return;
+		}
 		var h = chin.clientHeight;
 		chin.style.height = "" + h + "px";
 		haxe_Timer.delay(function() {

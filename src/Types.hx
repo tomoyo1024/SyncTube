@@ -56,6 +56,7 @@ typedef Config = {
 	templateUrl:String,
 	youtubeApiKey:String,
 	youtubePlaylistLimit:Int,
+	voteSkipRatio:Float,
 	permissions:Permissions,
 	emotes:Array<Emote>,
 	filters:Array<Filter>,
@@ -242,6 +243,11 @@ typedef WsEvent = {
 	?skipVideo:{
 		url:String
 	},
+	?skipVideoStats:{
+		voted:Int,
+		total:Int,
+		required:Int
+	},
 	?pause:{
 		time:Float
 	},
@@ -298,6 +304,7 @@ enum abstract WsEventType(String) {
 	var AddVideo;
 	var RemoveVideo;
 	var SkipVideo;
+	var SkipVideoStats;
 	var VideoLoaded;
 	var Pause;
 	var Play;

@@ -17,6 +17,7 @@
 	"templateUrl": "https://youtube.com/playlist?list=PL9FiZUDVMu9tc_85frYognMOVFC_-VkSX",
 	"youtubeApiKey": "AIzaSyDTk1OPRI9cDkAK_BKsBcv10DQCHse-QaA",
 	"youtubePlaylistLimit": 50,
+	"voteSkipRatio": 0.51,
 	"cacheStorageLimitGiB": 3.0,
 	"permissions": {
 		"banned": [],

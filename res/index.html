@@ -65,11 +65,13 @@
           <div class="playlist-menu-wrap">
             <button id="playlist-menu-btn">
               <ion-icon name="menu"></ion-icon>
+              <div id="playlist-menu-indicator" style="display: none;">
+              </div>
             </button>
             <div id="playlist-menu-dropdown" class="playlist-menu-dropdown" style="display: none;">
               <button class="playlist-menu-item" id="voteskip" title="${voteForSkip}">
                 <ion-icon name="play-skip-forward"></ion-icon>
-                <span>${voteForSkip} <span class="hotkey-hint">(Alt-S)</span></span>
+                <span><span id="voteskip-text">${voteForSkip}</span> <span class="hotkey-hint">(Alt-S)</span></span>
               </button>
               <button class="playlist-menu-item" id="togglesynch" title="${disableVideoSync}">
                 <ion-icon name="unlink"></ion-icon>
