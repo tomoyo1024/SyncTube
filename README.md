@@ -94,7 +94,8 @@ It just works, but you can also check [user/ folder](/user/README.md) for server
 - `Alt-F` - Fullscreen player
 - `Alt-S` - Vote for skip
 - `Alt-C` - Retrieve playlist links
-- `Alt-U` - Disable/enable video synchronization
+- `Alt-U` - Toggle video synchronization
+- `Alt-click` on playlist item lock icon - Make all items permanent/temporary
 
 ## Plugins
 - [octosubs](https://github.com/RblSb/SyncTube-octosubs) - More colorful `ASS`/`SSA` subtitles support

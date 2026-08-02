@@ -1054,20 +1054,32 @@ client_Buttons.updateSynchThresholdBtn = function() {
 	window.document.querySelector("#synchThresholdBtn").innerText = tmp + "s";
 };
 client_Buttons.updateHotkeysBtn = function() {
-	var text = Lang.get("hotkeys");
-	var state = client_Buttons.settings.hotkeysEnabled ? Lang.get("on") : Lang.get("off");
-	window.document.querySelector("#hotkeysBtn").innerText = "" + text + ": " + state;
-	if(client_Buttons.settings.hotkeysEnabled) {
-		window.document.body.classList.remove("hotkeys-disabled");
-	} else {
-		window.document.body.classList.add("hotkeys-disabled");
+	var btn = window.document.querySelector("#hotkeysBtn");
+	var switchEl = btn.querySelector(".toggle-switch");
+	if(switchEl == null) {
+		btn.innerHTML = "<span>" + Lang.get("hotkeys") + "</span><div class=\"toggle-switch\"></div>";
+		switchEl = btn.querySelector(".toggle-switch");
 	}
+	switchEl.classList.toggle("on",client_Buttons.settings.hotkeysEnabled);
+	window.document.body.classList.toggle("hotkeys-disabled",!client_Buttons.settings.hotkeysEnabled);
 };
 client_Buttons.updatePageFullscreenBtn = function() {
-	window.document.querySelector("#pageFullscreenBtn").innerText = "" + Lang.get("pageFullscreen") + ": " + (client_Buttons.settings.pageFullscreen ? Lang.get("on") : Lang.get("off"));
+	var btn = window.document.querySelector("#pageFullscreenBtn");
+	var switchEl = btn.querySelector(".toggle-switch");
+	if(switchEl == null) {
+		btn.innerHTML = "<span>" + Lang.get("pageFullscreen") + "</span><div class=\"toggle-switch\"></div>";
+		switchEl = btn.querySelector(".toggle-switch");
+	}
+	switchEl.classList.toggle("on",client_Buttons.settings.pageFullscreen);
 };
 client_Buttons.updateFullscreenActionBtn = function() {
-	window.document.querySelector("#fullscreenActionBtn").innerText = "" + Lang.get(client_Utils.isTouch() ? "fullscreenActionTouch" : "fullscreenActionDesktop") + ": " + (client_Buttons.settings.fullscreenAction ? Lang.get("on") : Lang.get("off"));
+	var btn = window.document.querySelector("#fullscreenActionBtn");
+	var switchEl = btn.querySelector(".toggle-switch");
+	if(switchEl == null) {
+		btn.innerHTML = "<span>" + Lang.get(client_Utils.isTouch() ? "fullscreenActionTouch" : "fullscreenActionDesktop") + "</span><div class=\"toggle-switch\"></div>";
+		switchEl = btn.querySelector(".toggle-switch");
+	}
+	switchEl.classList.toggle("on",client_Buttons.settings.fullscreenAction);
 };
 client_Buttons.updateToggleSynchBtn = function(main) {
 	var toggleSynch = window.document.querySelector("#togglesynch");

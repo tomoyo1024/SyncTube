@@ -494,29 +494,38 @@ class Buttons {
 	}
 
 	static function updateHotkeysBtn():Void {
-		final text = Lang.get("hotkeys");
-		final state = settings.hotkeysEnabled ? Lang.get("on") : Lang.get("off");
-		getEl("#hotkeysBtn").innerText = '$text: $state';
-
-		if (settings.hotkeysEnabled) {
-			document.body.classList.remove("hotkeys-disabled");
-		} else {
-			document.body.classList.add("hotkeys-disabled");
+		final btn = getEl("#hotkeysBtn");
+		var switchEl = btn.querySelector(".toggle-switch");
+		if (switchEl == null) {
+			final text = Lang.get("hotkeys");
+			btn.innerHTML = '<span>$text</span><div class="toggle-switch"></div>';
+			switchEl = btn.querySelector(".toggle-switch");
 		}
+
+		switchEl.classList.toggle("on", settings.hotkeysEnabled);
+		document.body.classList.toggle("hotkeys-disabled", !settings.hotkeysEnabled);
 	}
 
 	static function updatePageFullscreenBtn():Void {
 		final btn = getEl("#pageFullscreenBtn");
-		final text = Lang.get("pageFullscreen");
-		final state = settings.pageFullscreen ? Lang.get("on") : Lang.get("off");
-		btn.innerText = '$text: $state';
+		var switchEl = btn.querySelector(".toggle-switch");
+		if (switchEl == null) {
+			final text = Lang.get("pageFullscreen");
+			btn.innerHTML = '<span>$text</span><div class="toggle-switch"></div>';
+			switchEl = btn.querySelector(".toggle-switch");
+		}
+		switchEl.classList.toggle("on", settings.pageFullscreen);
 	}
 
 	static function updateFullscreenActionBtn():Void {
 		final btn = getEl("#fullscreenActionBtn");
-		final text = Lang.get(Utils.isTouch() ? "fullscreenActionTouch" : "fullscreenActionDesktop");
-		final state = settings.fullscreenAction ? Lang.get("on") : Lang.get("off");
-		btn.innerText = '$text: $state';
+		var switchEl = btn.querySelector(".toggle-switch");
+		if (switchEl == null) {
+			final text = Lang.get(Utils.isTouch() ? "fullscreenActionTouch" : "fullscreenActionDesktop");
+			btn.innerHTML = '<span>$text</span><div class="toggle-switch"></div>';
+			switchEl = btn.querySelector(".toggle-switch");
+		}
+		switchEl.classList.toggle("on", settings.fullscreenAction);
 	}
 
 	public static function updateToggleSynchBtn(main:Main):Void {
