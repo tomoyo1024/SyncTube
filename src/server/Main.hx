@@ -83,7 +83,6 @@ class Main {
 		to stopped server time.
 	**/
 	var emptyRoomCallbackTimer:Null<Timer>;
-	var isServerPause = false;
 
 	static function main():Void {
 		new Main({
@@ -569,7 +568,7 @@ class Main {
 				if (!internal) return;
 				emptyRoomCallbackTimer?.stop();
 				if (clients.length == 1 && videoList.length > 0) {
-					if (!isServerPause) {
+					if (!videoTimer.isServerPause) {
 						if (videoTimer.isPaused()) videoTimer.play();
 					}
 				}
@@ -602,7 +601,7 @@ class Main {
 				if (client.isLeader) {
 					if (videoList.length > 0) {
 						videoTimer.pause();
-						isServerPause = true;
+						videoTimer.isServerPause = true;
 					}
 				}
 				skipVotes.remove(client.name);
@@ -845,7 +844,7 @@ class Main {
 
 			case VideoLoaded:
 				// Called if client loads next video and can play it
-				if (isServerPause) return;
+				if (videoTimer.isServerPause) return;
 				prepareVideoPlayback();
 
 			case RemoveVideo:
@@ -870,7 +869,6 @@ class Main {
 				}
 				if (videoList.length == 0) {
 					videoTimer.stop();
-					isServerPause = false;
 				}
 
 			case SkipVideo:
@@ -914,7 +912,6 @@ class Main {
 					saveFlashbackTime(videoList.currentItem);
 				}
 				videoTimer.setTime(data.play.time);
-				isServerPause = false;
 				videoTimer.play();
 				broadcast({
 					type: data.type,
@@ -946,7 +943,7 @@ class Main {
 					}
 				};
 				if (videoTimer.isPaused()) obj.getTime.paused = true;
-				if (isServerPause) obj.getTime.pausedByServer = true;
+				if (videoTimer.isServerPause) obj.getTime.pausedByServer = true;
 				if (videoTimer.getRate() != 1) {
 					if (!clients.hasLeader()) videoTimer.setRate(1);
 					else obj.getTime.rate = videoTimer.getRate();
@@ -1007,7 +1004,7 @@ class Main {
 					// setting other users as leaders with a set permission
 					if (!checkPermission(client, SetLeaderPerm)) return;
 				}
-				isServerPause = false;
+				videoTimer.isServerPause = false;
 				clients.setLeader(clientName);
 				broadcast({
 					type: SetLeader,
@@ -1082,7 +1079,6 @@ class Main {
 				}
 				videoTimer.stop();
 				videoList.clear();
-				isServerPause = false;
 				broadcast(data);
 
 			case ShufflePlaylist:
@@ -1232,7 +1228,6 @@ class Main {
 			else restartWaitTimer();
 		} else {
 			videoTimer.stop();
-			isServerPause = false;
 		}
 		broadcast(data);
 	}
@@ -1376,7 +1371,6 @@ class Main {
 		waitVideoStart?.stop();
 		loadedClientsCount = 0;
 		broadcast({type: VideoLoaded});
-		isServerPause = false;
 		videoTimer.start();
 	}
 

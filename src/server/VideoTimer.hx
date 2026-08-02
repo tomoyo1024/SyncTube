@@ -4,6 +4,7 @@ import haxe.Timer.stamp;
 
 class VideoTimer {
 	public var isStarted(default, null) = false;
+	public var isServerPause = false;
 
 	var startTime = 0.0;
 	var pauseStartTime = 0.0;
@@ -14,6 +15,7 @@ class VideoTimer {
 
 	public function start():Void {
 		isStarted = true;
+		isServerPause = false;
 		startTime = stamp();
 		pauseStartTime = 0;
 		rateStartTime = stamp();
@@ -21,6 +23,7 @@ class VideoTimer {
 
 	public function stop():Void {
 		isStarted = false;
+		isServerPause = false;
 		startTime = 0;
 		pauseStartTime = 0;
 	}
@@ -38,6 +41,7 @@ class VideoTimer {
 
 	public function play():Void {
 		if (!isStarted) start();
+		isServerPause = false;
 		startTime += pauseTime();
 		pauseStartTime = 0;
 		rateStartTime = stamp();
