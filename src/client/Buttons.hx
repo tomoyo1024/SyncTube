@@ -5,6 +5,7 @@ import haxe.Timer;
 import js.Browser.document;
 import js.Browser.window;
 import js.html.Element;
+import js.html.Event;
 import js.html.ImageElement;
 import js.html.InputElement;
 import js.html.KeyboardEvent;
@@ -24,7 +25,7 @@ class Buttons {
 		split = new Split(settings);
 		split.setSize(settings.chatSize);
 
-		initChatInputs(main);
+		initInputs(main);
 
 		for (item in settings.checkboxes) {
 			if (item.checked == null) continue;
@@ -541,7 +542,7 @@ class Buttons {
 		}
 	}
 
-	static function initChatInputs(main:Main):Void {
+	static function initInputs(main:Main):Void {
 		final guestName:InputElement = getEl("#guestname");
 		guestName.onkeydown = e -> {
 			if (e.keyCode == KeyCode.Return) {
@@ -559,37 +560,12 @@ class Buttons {
 			}
 		}
 
-		final chatline:InputElement = getEl("#chatline");
-		chatline.onfocus = e -> {
-			if (Utils.isIOS()) {
-				// final startY = window.scrollY;
-				final startY = 0;
-				Timer.delay(() -> {
-					window.scrollBy(0, -(window.scrollY - startY));
-					getEl("#video").scrollTop = 0;
-					main.scrollChatToEnd();
-				}, 100);
-			} else if (Utils.isTouch()) {
-				main.scrollChatToEnd();
-			}
-		}
 		final viewport = getVisualViewport();
 		if (viewport != null) {
 			viewport.addEventListener("resize", e -> onViewportResize());
 			onViewportResize();
 		}
-		new InputWithHistory(chatline, 50, value -> {
-			if (main.handleCommands(value)) return true;
-			main.send({
-				type: Message,
-				message: {
-					clientName: "",
-					text: value
-				}
-			});
-			if (Utils.isTouch()) chatline.blur();
-			return true;
-		});
+
 		final checkboxes:Array<InputElement> = [
 			getEl("#add-temp"),
 		];

@@ -1,5 +1,6 @@
 package client;
 
+import js.html.Event;
 import js.html.InputElement;
 import js.html.KeyboardEvent;
 
@@ -8,19 +9,22 @@ class InputWithHistory {
 	final maxItems:Int;
 	final history:Array<String>;
 	final onEnter:(value:String) -> Bool;
+	final onInterceptKeyDown:Null<(e:KeyboardEvent) -> Bool>;
 	var historyId = -1;
 
 	public function new(
 		element:InputElement,
 		?history:Array<String>,
 		maxItems:Int,
-		onEnter:(value:String) -> Bool
+		onEnter:(value:String) -> Bool,
+		?onInterceptKeyDown:(e:KeyboardEvent) -> Bool
 	) {
 		this.element = element;
 		if (history != null) this.history = history;
 		else this.history = [];
 		this.maxItems = maxItems;
 		this.onEnter = onEnter;
+		this.onInterceptKeyDown = onInterceptKeyDown;
 		element.onkeydown = onKeyDown;
 	}
 
@@ -30,6 +34,7 @@ class InputWithHistory {
 	}
 
 	function onKeyDown(e:KeyboardEvent) {
+		if (onInterceptKeyDown != null && onInterceptKeyDown(e)) return;
 		final key:KeyCode = cast e.keyCode;
 		switch (key) {
 			case Return:
@@ -59,11 +64,13 @@ class InputWithHistory {
 					element.value = history[historyId];
 				}
 				onInput();
+			case Escape:
+				e.preventDefault();
 			default:
 		}
 	}
 
 	function onInput():Void {
-		if (element.oninput != null) element.oninput();
+		element.dispatchEvent(new Event("input"));
 	}
 }

@@ -40,6 +40,7 @@ class Main {
 	public var playersCacheSupport(default, null):Array<PlayerType> = [];
 	public var showingServerPause(default, null) = false;
 	public var hasSeenSkipVote = false;
+	public var chatInput:ChatInput;
 
 	var skipVoteCount = 0;
 	var skipVoteRequired = 0;
@@ -203,6 +204,7 @@ class Main {
 	}
 
 	function initListeners():Void {
+		chatInput = new ChatInput(this);
 		Buttons.init(this);
 
 		final leaderBtn = getEl("#leader_btn");
@@ -1355,15 +1357,26 @@ class Main {
 	/* Returns `true` if text should not be sent to chat */
 	public function handleCommands(command:String):Bool {
 		if (!command.startsWith("/")) return false;
-		final args = command.trim().split(" ");
-		command = args.shift().substr(1);
-		if (command.length == 0) return false;
+		final parsed = Commands.parse(command);
+		final args = parsed.args;
+		switch (parsed.cmd?.name) {
+			case null:
+				final cmdNameWithoutSlash = parsed.rawCmd.substr(1);
+				if (matchSimpleDate.match(cmdNameWithoutSlash)) {
+					send({
+						type: Rewind,
+						rewind: {
+							time: parseSimpleDate(cmdNameWithoutSlash)
+						}
+					});
+				}
+				return false;
 
-		switch (command) {
-			case "help":
+			case Help:
 				showChatHintList();
 				return true;
-			case "ban":
+
+			case Ban:
 				mergeRedundantArgs(args, 0, 2);
 				final name = args[0];
 				final time = parseSimpleDate(args[1]);
@@ -1376,7 +1389,8 @@ class Main {
 					}
 				});
 				return true;
-			case "unban", "removeBan":
+
+			case Unban:
 				mergeRedundantArgs(args, 0, 1);
 				final name = args[0];
 				send({
@@ -1387,7 +1401,8 @@ class Main {
 					}
 				});
 				return true;
-			case "kick":
+
+			case Kick:
 				mergeRedundantArgs(args, 0, 1);
 				final name = args[0];
 				send({
@@ -1397,16 +1412,20 @@ class Main {
 					}
 				});
 				return true;
-			case "clear":
+
+			case Clear:
 				send({type: ClearChat});
 				return true;
-			case "flashback", "fb":
+
+			case Flashback:
 				send({type: Flashback});
 				return false;
-			case "ad":
+
+			case Ad:
 				player.skipAd();
 				return false;
-			case "volume":
+
+			case Volume:
 				var v = Std.parseFloat(args[0]);
 				if (Math.isNaN(v)) v = 1;
 				v = v.clamp(0, 3);
@@ -1421,23 +1440,15 @@ class Main {
 				final rawPlayer = @:privateAccess player.rawPlayer;
 				rawPlayer.boostVolume(v);
 				return true;
-			case "dump":
+
+			case Dump:
 				send({type: Dump});
 				return true;
-			case "crash":
+
+			case Crash:
 				send({type: CrashTest});
 				return true;
 		}
-		if (matchSimpleDate.match(command)) {
-			send({
-				type: Rewind,
-				rewind: {
-					time: parseSimpleDate(command)
-				}
-			});
-			return false;
-		}
-		return false;
 	}
 
 	final matchSimpleDate = ~/^-?([0-9]+d)?([0-9]+h)?([0-9]+m)?([0-9]+s?)?$/;

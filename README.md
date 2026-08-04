@@ -82,7 +82,7 @@ It just works, but you can also check [user/ folder](/user/README.md) for server
 ### Admins only:
 
 - `/ban Guest 1 2h` - Ban user `Guest 1` ip for `2 hours`
-- `/unban Foo` (`/removeBan`) - Unban user `Foo`
+- `/unban Foo` - Unban user `Foo`
 - `/kick Foo` - Force `Foo` disconnection until page reload
 - `/dump` - Download state dump to report issues
 - `/crash` - Crash server if you need to test your auto-restart solution

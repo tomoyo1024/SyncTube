@@ -561,7 +561,7 @@ client_Buttons.init = function(main) {
 	}
 	client_Buttons.split = new client_Split(client_Buttons.settings);
 	client_Buttons.split.setSize(client_Buttons.settings.chatSize);
-	client_Buttons.initChatInputs(main);
+	client_Buttons.initInputs(main);
 	var _g = 0;
 	var _g1 = client_Buttons.settings.checkboxes;
 	while(_g < _g1.length) {
@@ -1092,7 +1092,7 @@ client_Buttons.updateToggleSynchBtn = function(main) {
 		span.innerHTML = "" + text + " <span class=\"hotkey-hint\">(Alt-U)</span>";
 	}
 };
-client_Buttons.initChatInputs = function(main) {
+client_Buttons.initInputs = function(main) {
 	var guestName = window.document.querySelector("#guestname");
 	guestName.onkeydown = function(e) {
 		if(e.keyCode == 13) {
@@ -1112,19 +1112,6 @@ client_Buttons.initChatInputs = function(main) {
 			}
 		}
 	};
-	var chatline = window.document.querySelector("#chatline");
-	chatline.onfocus = function(e) {
-		if(client_Utils.isIOS()) {
-			var startY = 0;
-			haxe_Timer.delay(function() {
-				window.scrollBy(0,-(window.scrollY - startY));
-				window.document.querySelector("#video").scrollTop = 0;
-				main.scrollChatToEnd();
-			},100);
-		} else if(client_Utils.isTouch()) {
-			main.scrollChatToEnd();
-		}
-	};
 	var viewport = window.visualViewport;
 	if(viewport != null) {
 		viewport.addEventListener("resize",function(e) {
@@ -1132,16 +1119,6 @@ client_Buttons.initChatInputs = function(main) {
 		});
 		client_Buttons.onViewportResize();
 	}
-	new client_InputWithHistory(chatline,null,50,function(value) {
-		if(main.handleCommands(value)) {
-			return true;
-		}
-		main.send({ type : "Message", message : { clientName : "", text : value}});
-		if(client_Utils.isTouch()) {
-			chatline.blur();
-		}
-		return true;
-	});
 	var checkboxes = [window.document.querySelector("#add-temp")];
 	var _g = 0;
 	while(_g < checkboxes.length) {
@@ -1196,6 +1173,281 @@ client_Buttons.initPageFullscreen = function() {
 		client_Buttons.clearUnreadChatMessages();
 		client_Buttons.updateFullscreenChatBtn();
 	};
+};
+var client_ChatInput = function(main) {
+	this.selectedCommandIndex = -1;
+	this.filteredCommands = [];
+	this.main = main;
+	this.chatline = window.document.querySelector("#chatline");
+	this.commandsWrap = window.document.querySelector("#chat-commands-wrap");
+	this.commandsList = window.document.querySelector("#chat-commands-list");
+	this.setupFocusHandler();
+	this.setupAutocomplete();
+	this.inputWithHistory = new client_InputWithHistory(this.chatline,null,50,$bind(this,this.onEnter),$bind(this,this.onInterceptKeyDown));
+};
+client_ChatInput.__name__ = "client.ChatInput";
+client_ChatInput.prototype = {
+	setupFocusHandler: function() {
+		var _gthis = this;
+		this.chatline.onfocus = function(e) {
+			if(client_Utils.isIOS()) {
+				var startY = 0;
+				haxe_Timer.delay(function() {
+					window.scrollBy(0,-(window.scrollY - startY));
+					window.document.querySelector("#video").scrollTop = 0;
+					_gthis.main.scrollChatToEnd();
+				},100);
+			} else if(client_Utils.isTouch()) {
+				_gthis.main.scrollChatToEnd();
+			}
+		};
+	}
+	,setupAutocomplete: function() {
+		var _gthis = this;
+		this.commandsList.addEventListener("mousemove",function(e) {
+			_gthis.commandsList.classList.remove("keyboard-nav");
+		});
+		this.chatline.addEventListener("input",function(e) {
+			var val = _gthis.chatline.value;
+			if(StringTools.startsWith(val,"/")) {
+				_gthis.filteredCommands = client_Commands.filterForAutocomplete(val);
+				_gthis.selectedCommandIndex = _gthis.filteredCommands.length > 0 ? 0 : -1;
+				_gthis.renderCommands();
+			} else {
+				_gthis.commandsWrap.style.display = "none";
+				_gthis.selectedCommandIndex = -1;
+			}
+		});
+		this.chatline.addEventListener("blur",function(e) {
+			return _gthis.commandsWrap.style.display = "none";
+		});
+	}
+	,renderCommands: function() {
+		var _gthis = this;
+		this.commandsList.innerHTML = "";
+		if(this.filteredCommands.length == 0) {
+			this.commandsWrap.style.display = "none";
+			return;
+		}
+		var parsed = client_Commands.parse(this.chatline.value);
+		var currentArgIndex = parsed.currentArgIndex;
+		var _g = 0;
+		var _g1 = this.filteredCommands.length;
+		while(_g < _g1) {
+			var i = [_g++];
+			var cmd = [this.filteredCommands[i[0]]];
+			var item = window.document.createElement("div");
+			item.className = "chat-command-item" + (i[0] == this.selectedCommandIndex ? " active" : "");
+			item.onclick = (function(cmd) {
+				return function(e) {
+					_gthis.chatline.value = (cmd[0].name == null ? "null" : cmd[0].name) + (cmd[0].args > 0 ? " " : "");
+					_gthis.chatline.focus();
+					if(cmd[0].args == 0) {
+						_gthis.commandsWrap.style.display = "none";
+						_gthis.selectedCommandIndex = -1;
+					} else {
+						_gthis.chatline.dispatchEvent(new Event("input"));
+					}
+				};
+			})(cmd);
+			item.onmouseenter = (function(i) {
+				return function(e) {
+					if(!_gthis.commandsList.classList.contains("keyboard-nav")) {
+						_gthis.selectedCommandIndex = i[0];
+						var _g = 0;
+						var _g1 = _gthis.commandsList.children.length;
+						while(_g < _g1) {
+							var j = _g++;
+							var child = _gthis.commandsList.children[j];
+							if(j == i[0]) {
+								child.classList.add("active");
+							} else {
+								child.classList.remove("active");
+							}
+						}
+					}
+				};
+			})(i);
+			var nameDiv = window.document.createElement("div");
+			nameDiv.className = "chat-command-item-name";
+			nameDiv.innerText = cmd[0].name;
+			var descDiv = window.document.createElement("div");
+			descDiv.className = "chat-command-item-desc";
+			descDiv.innerHTML = client_Commands.formatDescWithHighlight(Lang.get(cmd[0].lang),currentArgIndex);
+			item.appendChild(nameDiv);
+			item.appendChild(descDiv);
+			this.commandsList.appendChild(item);
+		}
+		this.commandsWrap.style.display = "";
+		if(this.selectedCommandIndex >= 0 && this.commandsList.children.length > this.selectedCommandIndex) {
+			var selectedEl = this.commandsList.children[this.selectedCommandIndex];
+			selectedEl.scrollIntoView({ block : "center"});
+		}
+	}
+	,onEnter: function(value) {
+		if(this.main.handleCommands(value)) {
+			return true;
+		}
+		this.main.send({ type : "Message", message : { clientName : "", text : value}});
+		if(client_Utils.isTouch()) {
+			this.chatline.blur();
+		}
+		this.commandsWrap.style.display = "none";
+		return true;
+	}
+	,onInterceptKeyDown: function(e) {
+		if(this.commandsWrap.style.display == "none") {
+			return false;
+		}
+		var key = e.keyCode;
+		switch(key) {
+		case 9:case 13:
+			if(this.selectedCommandIndex < 0 || this.selectedCommandIndex >= this.filteredCommands.length) {
+				return false;
+			}
+			var selectedCmd = this.filteredCommands[this.selectedCommandIndex];
+			var val = this.chatline.value;
+			var hasSpace = val.indexOf(" ") >= 0;
+			if(key == 13) {
+				if(hasSpace || selectedCmd.args == 0 && StringTools.trim(val).toLowerCase() == selectedCmd.name) {
+					return false;
+				}
+			}
+			if(!hasSpace) {
+				this.chatline.value = (selectedCmd.name == null ? "null" : selectedCmd.name) + (selectedCmd.args > 0 ? " " : "");
+			}
+			e.preventDefault();
+			this.chatline.dispatchEvent(new Event("input"));
+			return true;
+		case 27:
+			this.commandsWrap.style.display = "none";
+			return false;
+		case 38:
+			this.commandsList.classList.add("keyboard-nav");
+			if(this.selectedCommandIndex > 0) {
+				this.selectedCommandIndex--;
+			} else {
+				this.selectedCommandIndex = this.filteredCommands.length - 1;
+			}
+			this.renderCommands();
+			e.preventDefault();
+			return true;
+		case 40:
+			this.commandsList.classList.add("keyboard-nav");
+			if(this.selectedCommandIndex < this.filteredCommands.length - 1) {
+				this.selectedCommandIndex++;
+			} else {
+				this.selectedCommandIndex = 0;
+			}
+			this.renderCommands();
+			e.preventDefault();
+			return true;
+		default:
+			return false;
+		}
+	}
+};
+var client_CommandInfo = function(name,args,aliases) {
+	if(args == null) {
+		args = 0;
+	}
+	this.name = name;
+	this.args = args;
+	this.aliases = aliases != null ? aliases : [];
+	this.lang = this.getLangId();
+};
+client_CommandInfo.__name__ = "client.CommandInfo";
+client_CommandInfo.prototype = {
+	getLangId: function() {
+		var withoutSlash = HxOverrides.substr(this.name,1,null);
+		return "cmd" + withoutSlash.charAt(0).toUpperCase() + HxOverrides.substr(withoutSlash,1,null);
+	}
+};
+var client_Commands = function() { };
+client_Commands.__name__ = "client.Commands";
+client_Commands.find = function(name) {
+	var lower = name.toLowerCase();
+	var _g = 0;
+	var _g1 = client_Commands.list;
+	while(_g < _g1.length) {
+		var c = _g1[_g];
+		++_g;
+		if(c.name == lower) {
+			return c;
+		}
+		var _g2 = 0;
+		var _g3 = c.aliases;
+		while(_g2 < _g3.length) if(_g3[_g2++].toLowerCase() == lower) {
+			return c;
+		}
+	}
+	return null;
+};
+client_Commands.parse = function(input) {
+	if(!StringTools.startsWith(input,"/")) {
+		return { cmd : null, rawCmd : "", args : [], currentArgIndex : -1};
+	}
+	var parts = input.split(" ");
+	var rawCmd = parts[0];
+	var args = parts.slice(1);
+	var currentArgIndex = args.length > 0 ? args.length - 1 : -1;
+	return { cmd : client_Commands.find(rawCmd), rawCmd : rawCmd, args : args, currentArgIndex : currentArgIndex};
+};
+client_Commands.filterForAutocomplete = function(val) {
+	if(!StringTools.startsWith(val,"/")) {
+		return [];
+	}
+	var parts = val.toLowerCase().split(" ");
+	var searchCmd = parts[0];
+	var spaceCount = parts.length - 1;
+	var result = [];
+	var _g = 0;
+	var _g1 = client_Commands.list;
+	while(_g < _g1.length) {
+		var c = _g1[_g];
+		++_g;
+		if(spaceCount == 0) {
+			if(StringTools.startsWith(c.name,searchCmd)) {
+				result.push(c);
+			} else {
+				var _g2 = 0;
+				var _g3 = c.aliases;
+				while(_g2 < _g3.length) if(StringTools.startsWith(_g3[_g2++].toLowerCase(),searchCmd)) {
+					result.push(c);
+					break;
+				}
+			}
+		} else if(spaceCount <= c.args) {
+			if(c.name == searchCmd) {
+				result.push(c);
+			} else {
+				var _g4 = 0;
+				var _g5 = c.aliases;
+				while(_g4 < _g5.length) if(_g5[_g4++].toLowerCase() == searchCmd) {
+					result.push(c);
+					break;
+				}
+			}
+		}
+	}
+	return result;
+};
+client_Commands.formatDescWithHighlight = function(desc,activeArgIndex) {
+	desc = StringTools.htmlEscape(desc);
+	var argCounter = 0;
+	desc = new EReg("&lt;[^&]+&gt;","g").map(desc,function(reg) {
+		var token = reg.matched(0);
+		var isCurrent = argCounter == activeArgIndex;
+		argCounter += 1;
+		if(isCurrent) {
+			return "<span class=\"chat-command-arg-active\">" + token + "</span>";
+		} else {
+			return token;
+		}
+	});
+	return new EReg("`([^`]+)`","g").map(desc,function(reg) {
+		return "<span class=\"chat-command-code\">" + reg.matched(1) + "</span>";
+	});
 };
 var client_FileUploader = function(main) {
 	this.main = main;
@@ -1315,7 +1567,7 @@ client_FileUploader.prototype = {
 		});
 	}
 };
-var client_InputWithHistory = function(element,history,maxItems,onEnter) {
+var client_InputWithHistory = function(element,history,maxItems,onEnter,onInterceptKeyDown) {
 	this.historyId = -1;
 	this.element = element;
 	if(history != null) {
@@ -1325,6 +1577,7 @@ var client_InputWithHistory = function(element,history,maxItems,onEnter) {
 	}
 	this.maxItems = maxItems;
 	this.onEnter = onEnter;
+	this.onInterceptKeyDown = onInterceptKeyDown;
 	element.onkeydown = $bind(this,this.onKeyDown);
 };
 client_InputWithHistory.__name__ = "client.InputWithHistory";
@@ -1336,6 +1589,9 @@ client_InputWithHistory.pushIfNotLast = function(arr,item) {
 };
 client_InputWithHistory.prototype = {
 	onKeyDown: function(e) {
+		if(this.onInterceptKeyDown != null && this.onInterceptKeyDown(e)) {
+			return;
+		}
 		var key = e.keyCode;
 		switch(key) {
 		case 13:
@@ -1352,6 +1608,9 @@ client_InputWithHistory.prototype = {
 			this.historyId = -1;
 			this.element.value = "";
 			this.onInput();
+			break;
+		case 27:
+			e.preventDefault();
 			break;
 		case 38:
 			this.historyId--;
@@ -1383,9 +1642,7 @@ client_InputWithHistory.prototype = {
 		}
 	}
 	,onInput: function() {
-		if(this.element.oninput != null) {
-			this.element.oninput();
-		}
+		this.element.dispatchEvent(new Event("input"));
 	}
 };
 var client_JsApi = function() { };
@@ -1704,6 +1961,7 @@ client_Main.prototype = {
 	}
 	,initListeners: function() {
 		var _gthis = this;
+		this.chatInput = new client_ChatInput(this);
 		client_Buttons.init(this);
 		var leaderBtn = window.document.querySelector("#leader_btn");
 		leaderBtn.onclick = $bind(this,this.toggleLeader);
@@ -1980,7 +2238,7 @@ client_Main.prototype = {
 		var data = JSON.parse(e.data);
 		if(this.config != null && this.config.isVerbose) {
 			var t = data.type;
-			haxe_Log.trace("Event: " + data.type,{ fileName : "src/client/Main.hx", lineNumber : 541, className : "client.Main", methodName : "onMessage", customParams : [Reflect.field(data,t.charAt(0).toLowerCase() + HxOverrides.substr(t,1,null))]});
+			haxe_Log.trace("Event: " + data.type,{ fileName : "src/client/Main.hx", lineNumber : 543, className : "client.Main", methodName : "onMessage", customParams : [Reflect.field(data,t.charAt(0).toLowerCase() + HxOverrides.substr(t,1,null))]});
 		}
 		client_JsApi.fireEvents(data);
 		switch(data.type) {
@@ -2853,74 +3111,76 @@ client_Main.prototype = {
 		if(!StringTools.startsWith(command,"/")) {
 			return false;
 		}
-		var args = StringTools.trim(command).split(" ");
-		command = HxOverrides.substr(args.shift(),1,null);
-		if(command.length == 0) {
+		var parsed = client_Commands.parse(command);
+		var args = parsed.args;
+		var tmp = parsed.cmd;
+		var _g = tmp != null ? tmp.name : null;
+		if(_g == null) {
+			var cmdNameWithoutSlash = HxOverrides.substr(parsed.rawCmd,1,null);
+			if(this.matchSimpleDate.match(cmdNameWithoutSlash)) {
+				this.send({ type : "Rewind", rewind : { time : this.parseSimpleDate(cmdNameWithoutSlash)}});
+			}
 			return false;
-		}
-		switch(command) {
-		case "ad":
-			this.player.skipAd();
-			return false;
-		case "ban":
-			this.mergeRedundantArgs(args,0,2);
-			var name = args[0];
-			var time = this.parseSimpleDate(args[1]);
-			if(time < 0) {
+		} else {
+			switch(_g) {
+			case "/ad":
+				this.player.skipAd();
+				return false;
+			case "/ban":
+				this.mergeRedundantArgs(args,0,2);
+				var name = args[0];
+				var time = this.parseSimpleDate(args[1]);
+				if(time < 0) {
+					return true;
+				}
+				this.send({ type : "BanClient", banClient : { name : name, time : time}});
+				return true;
+			case "/clear":
+				this.send({ type : "ClearChat"});
+				return true;
+			case "/crash":
+				this.send({ type : "CrashTest"});
+				return true;
+			case "/dump":
+				this.send({ type : "Dump"});
+				return true;
+			case "/fb":
+				this.send({ type : "Flashback"});
+				return false;
+			case "/help":
+				this.showChatHintList();
+				return true;
+			case "/kick":
+				this.mergeRedundantArgs(args,0,1);
+				this.send({ type : "KickClient", kickClient : { name : args[0]}});
+				return true;
+			case "/unban":
+				this.mergeRedundantArgs(args,0,1);
+				this.send({ type : "BanClient", banClient : { name : args[0], time : 0}});
+				return true;
+			case "/volume":
+				var v = parseFloat(args[0]);
+				if(isNaN(v)) {
+					v = 1;
+				}
+				if(v < 0) {
+					v = 0;
+				} else if(v > 3) {
+					v = 3;
+				}
+				var wasNotFull = this.player.getVolume() < 1;
+				this.player.setVolume(v < 0 ? 0 : v > 1 ? 1 : v);
+				if(this.player.getPlayerType() != "RawType") {
+					return true;
+				}
+				if(wasNotFull && v > 1) {
+					this.serverMessage("Volume was not maxed yet to be boosted, you can send command again.");
+					return true;
+				}
+				this.player.rawPlayer.boostVolume(v);
 				return true;
 			}
-			this.send({ type : "BanClient", banClient : { name : name, time : time}});
-			return true;
-		case "clear":
-			this.send({ type : "ClearChat"});
-			return true;
-		case "crash":
-			this.send({ type : "CrashTest"});
-			return true;
-		case "dump":
-			this.send({ type : "Dump"});
-			return true;
-		case "fb":case "flashback":
-			this.send({ type : "Flashback"});
-			return false;
-		case "help":
-			this.showChatHintList();
-			return true;
-		case "kick":
-			this.mergeRedundantArgs(args,0,1);
-			this.send({ type : "KickClient", kickClient : { name : args[0]}});
-			return true;
-		case "removeBan":case "unban":
-			this.mergeRedundantArgs(args,0,1);
-			this.send({ type : "BanClient", banClient : { name : args[0], time : 0}});
-			return true;
-		case "volume":
-			var v = parseFloat(args[0]);
-			if(isNaN(v)) {
-				v = 1;
-			}
-			if(v < 0) {
-				v = 0;
-			} else if(v > 3) {
-				v = 3;
-			}
-			var wasNotFull = this.player.getVolume() < 1;
-			this.player.setVolume(v < 0 ? 0 : v > 1 ? 1 : v);
-			if(this.player.getPlayerType() != "RawType") {
-				return true;
-			}
-			if(wasNotFull && v > 1) {
-				this.serverMessage("Volume was not maxed yet to be boosted, you can send command again.");
-				return true;
-			}
-			this.player.rawPlayer.boostVolume(v);
-			return true;
 		}
-		if(this.matchSimpleDate.match(command)) {
-			this.send({ type : "Rewind", rewind : { time : this.parseSimpleDate(command)}});
-			return false;
-		}
-		return false;
 	}
 	,parseSimpleDate: function(text) {
 		if(text == null) {
@@ -6673,6 +6933,7 @@ Lang.langs = new haxe_ds_StringMap();
 Lang.ids = ["en","ru"];
 Lang.lang = HxOverrides.substr($global.navigator.language,0,2).toLowerCase();
 client_Buttons.hasUnreadChatMessages = false;
+client_Commands.list = [new client_CommandInfo("/help",0,null),new client_CommandInfo("/clear",0,null),new client_CommandInfo("/ban",2,null),new client_CommandInfo("/unban",1,null),new client_CommandInfo("/kick",1,null),new client_CommandInfo("/ad",0,null),new client_CommandInfo("/volume",1,null),new client_CommandInfo("/dump",0,null),new client_CommandInfo("/crash",0,null),new client_CommandInfo("/fb",0,["/flashback"])];
 client_JsApi.subtitleFormats = [];
 client_JsApi.videoChange = [];
 client_JsApi.videoRemove = [];
