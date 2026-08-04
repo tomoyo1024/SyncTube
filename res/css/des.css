@@ -441,6 +441,7 @@ header h4 {
   white-space: nowrap;
   font-size: .9rem;
   color: var(--midground);
+  transition: background-color ease .15s, color ease .15s;
 }
 
 .playlist-menu-dropdown button.playlist-menu-item:hover,
@@ -809,8 +810,24 @@ footer#footer {
   order: 0;
   flex-direction: column;
   flex-wrap: nowrap;
-  padding: clamp(0.25rem, 2vh, 1rem) clamp(0.5rem, 2vw, 1rem);
+  container-type: inline-size;
+  --chat-px: clamp(0.25rem, 10cqw - 1rem, 1rem);
+  --chat-py: clamp(0.25rem, 2vh, 1rem);
+  padding: 0;
   height: 40vh;
+}
+
+#chat>* {
+  padding-left: var(--chat-px);
+  padding-right: var(--chat-px);
+}
+
+#chat>*:first-child {
+  padding-top: var(--chat-py);
+}
+
+#chat>#chat-body {
+  padding-bottom: var(--chat-py);
 }
 
 @media only screen and (orientation: landscape) {
@@ -944,17 +961,26 @@ footer#footer {
 }
 
 #optionsPanel {
+  display: flex;
+  flex-direction: column;
   z-index: 1;
   background-color: var(--background-chat);
-  overflow-y: scroll;
   position: absolute;
-  top: 0;
-  left: 0;
+  /* to prevent fraction gap between chat controls and this panel */
+  top: -1px;
   bottom: 0;
+  left: 0;
   right: 0;
+  padding-left: var(--chat-px);
+  padding-right: var(--chat-px);
+  padding-bottom: var(--chat-py);
   padding-top: 1rem;
   transition: opacity 200ms;
   opacity: 0;
+}
+
+#optionsList {
+  overflow-y: auto;
 }
 
 .options-category {
@@ -977,7 +1003,7 @@ footer#footer {
 }
 
 #optionsList li button {
-  padding: 0.8rem 1.25rem 0.8rem 0;
+  padding: 0.8rem 0.8rem 0.8rem 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1106,15 +1132,16 @@ footer#footer {
 
 #chat-commands-wrap {
   display: flex;
-  width: calc(100% + 1rem);
+  width: 100%;
   background: var(--background-video);
   border-radius: 1rem;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
   overflow: hidden;
   flex-direction: column;
   position: absolute;
   bottom: 100%;
-  left: -0.5rem;
-  z-index: 10;
+  z-index: 1;
 }
 
 #chat-commands-list {
@@ -1256,6 +1283,7 @@ html {
 
 ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.1);
+  border-radius: .5rem;
 }
 
 ::-webkit-scrollbar-thumb:hover {
