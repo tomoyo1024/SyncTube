@@ -21,5 +21,5 @@ RUN haxelib setup /app \
     && haxelib install all --always && \
     haxe build-all.hxml
 
-ENTRYPOINT [ "npm", "start" ]
+ENTRYPOINT [ "node", "build/server.js" ]
 

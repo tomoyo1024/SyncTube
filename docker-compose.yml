@@ -8,4 +8,4 @@ services:
      ports:
        - "4200:4200"
      volumes:
-       - "${PWD}/user:/usr/src/app/user"
+       - "${PWD}/user:/app/user"

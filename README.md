@@ -41,7 +41,7 @@ Default channel example: https://synctube.onrender.com/
 As alternative, you can install Docker and run:
 > ```shell
 > docker build -t synctube .
-> docker run --rm -it -p 4200:4200 -v ${PWD}/user:/usr/src/app/user synctube
+> docker run --rm -it -p 4200:4200 -v ${PWD}/user:/app/user synctube
 > ```
 
 or
